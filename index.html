@@ -3,58 +3,199 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painéis SME RJ</title>
+<title>Painéis de Monitoramento SME-RJ</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 
 <style>
-  body {
-    margin: 0;
-    height: 100vh;
-    font-family: Arial, sans-serif;
-    background-color: #0a1f44; /* azul bem escuro */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-  }
+:root {
+  --bg: #060c14;
+  --surface: #0d1a26;
+  --border: #1a3350;
+  --accent: #00d4ff;
+  --accent2: #00ff9f;
+  --text: #e8f4ff;
+  --muted: #6b8fa8;
+  --grid: #0f1f2e;
+}
 
-  h1 {
-    color: white;
-    margin-bottom: 50px;
-    font-size: 32px;
-  }
+*{margin:0;padding:0;box-sizing:border-box}
 
-  .botao {
-    width: 320px;
-    padding: 25px;
-    margin: 15px;
-    font-size: 20px;
-    font-weight: bold;
-    text-align: center;
-    color: white;
-    background-color: #1c3d7a;
-    border-radius: 12px;
-    text-decoration: none;
-    transition: 0.3s;
-  }
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+}
 
-  .botao:hover {
-    background-color: #2a56a3;
-    transform: scale(1.05);
-  }
+/* GRID BACKGROUND */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    linear-gradient(var(--grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+  z-index:0;
+  opacity:.4;
+}
+
+/* FAIXA SUPERIOR (ESTILO GOVERNO) */
+.topbar{
+  width:100%;
+  height:6px;
+  background: linear-gradient(90deg, #00d4ff, #00ff9f);
+}
+
+/* HEADER */
+.header{
+  position:relative;
+  z-index:1;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:20px 40px;
+  border-bottom:1px solid var(--border);
+  background:rgba(13,26,38,0.9);
+  backdrop-filter: blur(6px);
+}
+
+.logo-area{
+  display:flex;
+  align-items:center;
+  gap:15px;
+}
+
+.logo{
+  width:140px;
+}
+
+.header-text{
+  display:flex;
+  flex-direction:column;
+}
+
+.header-text span{
+  font-size:12px;
+  color:var(--muted);
+  letter-spacing:.1em;
+}
+
+.header-text strong{
+  font-size:16px;
+  color:var(--text);
+}
+
+/* CONTEÚDO */
+.wrapper{
+  position:relative;
+  z-index:1;
+  text-align:center;
+  max-width:1200px;
+  margin:0 auto;
+  padding:60px 20px;
+}
+
+h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:3.5rem;
+  letter-spacing:4px;
+  color:var(--accent);
+  margin-bottom:10px;
+}
+
+.sub{
+  color:var(--muted);
+  margin-bottom:60px;
+  letter-spacing:.1em;
+}
+
+/* BOTÕES */
+.container{
+  display:flex;
+  justify-content:center;
+  gap:40px;
+  flex-wrap:wrap;
+}
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  width:320px;
+  padding:40px 20px;
+  border-radius:14px;
+  text-decoration:none;
+  color:var(--text);
+  transition:.3s;
+  box-shadow:0 0 30px rgba(0,0,0,0.4);
+}
+
+.card:hover{
+  transform:translateY(-10px);
+  border-color:var(--accent);
+  box-shadow:0 0 30px rgba(0,212,255,.25);
+}
+
+.icon{
+  font-size:48px;
+  margin-bottom:20px;
+}
+
+.title{
+  font-size:22px;
+  font-weight:600;
+}
+
+.desc{
+  font-size:14px;
+  color:var(--muted);
+  margin-top:8px;
+}
 </style>
 </head>
 
 <body>
 
-<h1>Painéis SME-RJ</h1>
+<!-- FAIXA SUPERIOR -->
+<div class="topbar"></div>
 
-<a href="panoramaenergia-smerj.html" class="botao">
-  ⚡ Consumo de Energia
-</a>
+<!-- HEADER -->
+<div class="header">
+  <div class="logo-area">
+    <img src="RIOPREFEITURA Educação horizontal monocromática brancopng" class="logo">
+    
+    <div class="header-text">
+      <span>Prefeitura da Cidade do Rio de Janeiro</span>
+      <strong>Secretaria Municipal de Educação</strong>
+    </div>
+  </div>
+</div>
 
-<a href="controlehidrico-smerj.html" class="botao">
-  💧 Consumo Hídrico
-</a>
+<!-- CONTEÚDO -->
+<div class="wrapper">
+
+  <h1>SME • PAINÉIS</h1>
+  <div class="sub">Monitoramento de Indicadores Operacionais</div>
+
+  <div class="container">
+
+    <a href="panoramaenergia-smerj.html" class="card">
+      <div class="icon">⚡</div>
+      <div class="title">Consumo de Energia</div>
+      <div class="desc">Análise de consumo e eficiência energética</div>
+    </a>
+
+    <a href="controlehidrico-smerj.html" class="card">
+      <div class="icon">💧</div>
+      <div class="title">Consumo Hídrico</div>
+      <div class="desc">Monitoramento e controle do uso de água</div>
+    </a>
+
+  </div>
+
+</div>
 
 </body>
 </html>
