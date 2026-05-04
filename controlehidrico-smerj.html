@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle Hídrico SME-RJ — 2025/2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060c14;
+  --surface: #0d1a26;
+  --surface2: #112233;
+  --border: #1a3350;
+  --accent: #00d4ff;
+  --accent2: #ff6b35;
+  --accent3: #00ff9f;
+  --warn: #ffcc00;
+  --danger: #ff3b3b;
+  --text: #e8f4ff;
+  --muted: #6b8fa8;
+  --grid: #0f1f2e;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* BACKGROUND GRID */
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;opacity:.4}
+
+.wrapper{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:24px}
+
+/* HEADER */
+header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.logo-area h1{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:4px;line-height:1;color:var(--accent);text-shadow:0 0 30px rgba(0,212,255,.4)}
+.logo-area p{font-size:.8rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-top:4px}
+.header-meta{text-align:right}
+.header-meta .stamp{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--muted);letter-spacing:.1em}
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,255,159,.1);border:1px solid rgba(0,255,159,.3);padding:4px 12px;border-radius:20px;font-size:.72rem;color:var(--accent3);letter-spacing:.1em;margin-top:6px}
+.live-badge span{width:7px;height:7px;border-radius:50%;background:var(--accent3);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:28px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px;width:fit-content}
+.tab{padding:8px 22px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;letter-spacing:.05em;transition:all .25s;color:var(--muted);background:transparent}
+.tab.active{background:var(--accent);color:#000;font-weight:700}
+.tab:hover:not(.active){color:var(--text);background:var(--border)}
+
+/* PANELS */
+.panel{display:none}
+.panel.active{display:block}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
+.kpi:hover{transform:translateY(-2px);border-color:var(--accent)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.blue::before{background:linear-gradient(90deg,var(--accent),transparent)}
+.kpi.orange::before{background:linear-gradient(90deg,var(--accent2),transparent)}
+.kpi.green::before{background:linear-gradient(90deg,var(--accent3),transparent)}
+.kpi.yellow::before{background:linear-gradient(90deg,var(--warn),transparent)}
+.kpi.red::before{background:linear-gradient(90deg,var(--danger),transparent)}
+.kpi-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px}
+.kpi-value{font-family:'Bebas Neue',sans-serif;font-size:2rem;line-height:1;color:var(--text)}
+.kpi-value.big{font-size:2.4rem}
+.kpi-sub{font-size:.75rem;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:5px}
+.badge-up{color:var(--danger);font-size:.8rem;font-weight:700}
+.badge-down{color:var(--accent3);font-size:.8rem;font-weight:700}
+.badge-neutral{color:var(--warn);font-size:.8rem;font-weight:700}
+
+/* GRID LAYOUTS */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:20px}
+.grid-13{display:grid;grid-template-columns:1fr 2.5fr;gap:20px;margin-bottom:20px}
+.grid-31{display:grid;grid-template-columns:2.5fr 1fr;gap:20px;margin-bottom:20px}
+@media(max-width:900px){.grid-2,.grid-3,.grid-13,.grid-31{grid-template-columns:1fr}}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:2px;color:var(--accent);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.card-title .icon{font-size:1rem}
+
+/* CHART containers */
+.chart-wrap{position:relative;height:260px}
+.chart-wrap.tall{height:320px}
+.chart-wrap.short{height:200px}
+
+/* ANOMALY ALERTS */
+.alert-list{display:flex;flex-direction:column;gap:10px}
+.alert-item{background:rgba(255,59,59,.07);border:1px solid rgba(255,59,59,.3);border-left:4px solid var(--danger);border-radius:8px;padding:12px 16px;animation:fadeIn .4s ease both}
+.alert-item.warn{background:rgba(255,204,0,.07);border:1px solid rgba(255,204,0,.3);border-left-color:var(--warn)}
+.alert-item.info{background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.2);border-left-color:var(--accent)}
+.alert-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.alert-title{font-weight:700;font-size:.85rem;color:var(--text)}
+.alert-badge{font-family:'DM Mono',monospace;font-size:.7rem;padding:2px 8px;border-radius:4px;background:rgba(255,59,59,.2);color:var(--danger)}
+.alert-item.warn .alert-badge{background:rgba(255,204,0,.2);color:var(--warn)}
+.alert-item.info .alert-badge{background:rgba(0,212,255,.15);color:var(--accent)}
+.alert-desc{font-size:.78rem;color:var(--muted);line-height:1.5}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.data-table th{text-align:left;padding:8px 12px;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500}
+.data-table td{padding:9px 12px;border-bottom:1px solid rgba(26,51,80,.5);font-family:'DM Mono',monospace;font-size:.8rem}
+.data-table tr:hover td{background:rgba(0,212,255,.04)}
+.data-table .highlight{color:var(--accent);font-weight:500}
+.data-table .danger-cell{color:var(--danger)}
+.data-table .good-cell{color:var(--accent3)}
+.data-table .warn-cell{color:var(--warn)}
+
+/* PROGRESS BARS */
+.progress-item{margin-bottom:12px}
+.progress-meta{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-bottom:5px}
+.progress-bar{background:var(--surface2);border-radius:4px;height:8px;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;transition:width 1s ease}
+
+/* PROJECTION */
+.proj-card{background:linear-gradient(135deg,rgba(0,212,255,.07),rgba(0,255,159,.05));border:1px solid rgba(0,212,255,.2);border-radius:12px;padding:22px}
+
+/* SECTION DIVIDER */
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin:28px 0 16px;border-left:3px solid var(--accent);padding-left:12px}
+
+/* CONCESSIONARIA PILLS */
+.conc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.conc-pill{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;position:relative;overflow:hidden}
+.conc-name{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px}
+.conc-value{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text)}
+.conc-share{font-size:.72rem;color:var(--muted);margin-top:3px}
+
+/* ECONOMY BOX */
+.eco-box{background:linear-gradient(135deg,rgba(0,255,159,.08),rgba(0,212,255,.04));border:1px solid rgba(0,255,159,.25);border-radius:12px;padding:20px}
+.eco-value{font-family:'Bebas Neue',sans-serif;font-size:3rem;color:var(--accent3);line-height:1}
+.eco-label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-top:4px}
+.eco-items{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+.eco-item{display:flex;justify-content:space-between;font-size:.8rem;padding:8px 0;border-bottom:1px solid rgba(0,255,159,.1)}
+.eco-item:last-child{border:none}
+.eco-item-val{font-family:'DM Mono',monospace;color:var(--accent3)}
+
+/* Tooltip override */
+.chartjs-tooltip{background:var(--surface2)!important;border:1px solid var(--border)!important}
+
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo-area">
+      <h1>CONTROLE HÍDRICO SME·RJ</h1>
+      <p>Secretaria Municipal de Educação — Painel de Consumo Hídrico & Faturamento</p>
+      <p style="font-size:.72rem;letter-spacing:.12em;color:var(--muted);margin-top:2px">COORDENADORIA TÉCNICA DE OPERAÇÕES</p>
+    </div>
+    <div class="header-meta">
+      <div class="stamp">ATUALIZADO: ABRIL / 2026 &nbsp;|&nbsp; 11 CREs &nbsp;|&nbsp; 1.368 UNIDADES</div>
+      <div class="live-badge"><span></span> DADOS REAIS 2025–2026</div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('panorama')">Panorama Geral</button>
+    <button class="tab" onclick="switchTab('comparativo')">Comparativo 2025 × 2026</button>
+    <button class="tab" onclick="switchTab('anomalias')">Alertas & Anomalias</button>
+    <button class="tab" onclick="switchTab('projecoes')">Projeções & Economia</button>
+    <button class="tab" onclick="switchTab('cres')">Performance por CRE</button>
+  </div>
+
+  <!-- ============= PANORAMA ============= -->
+  <div id="tab-panorama" class="panel active">
+    <div class="kpi-grid">
+      <div class="kpi blue">
+        <div class="kpi-label">Consumo Total 2025</div>
+        <div class="kpi-value big">3,246 M</div>
+        <div class="kpi-sub">m³ / ano completo</div>
+      </div>
+      <div class="kpi orange">
+        <div class="kpi-label">Faturamento Total 2025</div>
+        <div class="kpi-value big">R$ 112,4 M</div>
+        <div class="kpi-sub">valor bruto pago</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">Consumo 2026 (Jan–Abr)</div>
+        <div class="kpi-value big">802 mil</div>
+        <div class="kpi-sub"><span class="badge-down">▼ 12,7%</span> vs mesmo período 2025</div>
+      </div>
+      <div class="kpi yellow">
+        <div class="kpi-label">Faturamento 2026 (Jan–Abr)</div>
+        <div class="kpi-value big">R$ 30,1 M</div>
+        <div class="kpi-sub"><span class="badge-up">▲ 3,5%</span> vs mesmo período 2025</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi-label">Total Alunos Matriculados</div>
+        <div class="kpi-value big">493,6 K</div>
+        <div class="kpi-sub">11 CREs · 1.368 unidades</div>
+      </div>
+      <div class="kpi orange">
+        <div class="kpi-label">Custo p/ Aluno / Ano (2025)</div>
+        <div class="kpi-value big">R$ 227,7</div>
+        <div class="kpi-sub">consumo médio: 6,6 m³/aluno</div>
+      </div>
+      <div class="kpi red">
+        <div class="kpi-label">Maior CRE Consumidora</div>
+        <div class="kpi-value">CRE 7</div>
+        <div class="kpi-sub">465.986 m³ · 14,4% do total</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">Tarifa Média 2025</div>
+        <div class="kpi-value big">R$ 34,61</div>
+        <div class="kpi-sub">por m³</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">📊</span> CONSUMO MENSAL 2025 — TOTAL REDE (m³)</div>
+        <div class="chart-wrap"><canvas id="chart-monthly25"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">💰</span> FATURAMENTO MENSAL 2025 (R$)</div>
+        <div class="chart-wrap"><canvas id="chart-fat25"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-13">
+      <div class="card">
+        <div class="card-title"><span class="icon">🏢</span> FATURAMENTO POR CONCESSIONÁRIA 2025</div>
+        <div class="conc-grid">
+          <div class="conc-pill">
+            <div class="conc-name">Águas do Rio 4</div>
+            <div class="conc-value">R$ 57,5 M</div>
+            <div class="conc-share">51,1% do total</div>
+          </div>
+          <div class="conc-pill">
+            <div class="conc-name">Zona Oeste Mais</div>
+            <div class="conc-value">R$ 31,1 M</div>
+            <div class="conc-share">27,7% do total</div>
+          </div>
+          <div class="conc-pill">
+            <div class="conc-name">Iguá Rio</div>
+            <div class="conc-value">R$ 16,4 M</div>
+            <div class="conc-share">14,6% do total</div>
+          </div>
+          <div class="conc-pill">
+            <div class="conc-name">Águas do Rio 1</div>
+            <div class="conc-value">R$ 7,4 M</div>
+            <div class="conc-share">6,6% do total</div>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="chart-wrap short"><canvas id="chart-conc"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🏫</span> CONSUMO POR CRE 2025</div>
+        <div class="chart-wrap tall"><canvas id="chart-cre25"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============= COMPARATIVO ============= -->
+  <div id="tab-comparativo" class="panel">
+    <div class="kpi-grid">
+      <div class="kpi blue">
+        <div class="kpi-label">Δ Consumo Jan–Abr</div>
+        <div class="kpi-value">−12,7%</div>
+        <div class="kpi-sub"><span class="badge-down">▼ 116k m³</span> a menos em 2026</div>
+      </div>
+      <div class="kpi orange">
+        <div class="kpi-label">Δ Faturamento Jan–Abr</div>
+        <div class="kpi-value">+3,5%</div>
+        <div class="kpi-sub"><span class="badge-up">▲ R$ 1,03M</span> mais caro mesmo consumindo menos</div>
+      </div>
+      <div class="kpi red">
+        <div class="kpi-label">Aumento Tarifa Médio</div>
+        <div class="kpi-value">+18,6%</div>
+        <div class="kpi-sub">reajuste tarifário 2026</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">Melhor Desempenho 2026</div>
+        <div class="kpi-value">CRE 9</div>
+        <div class="kpi-sub"><span class="badge-down">▼ 17,4%</span> redução de consumo</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">📈</span> CONSUMO MENSAL: 2025 × 2026 (m³)</div>
+        <div class="chart-wrap tall"><canvas id="chart-comp-consumo"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">💸</span> FATURAMENTO MENSAL: 2025 × 2026 (R$)</div>
+        <div class="chart-wrap tall"><canvas id="chart-comp-fat"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🔍</span> VARIAÇÃO DE CONSUMO POR CRE — JAN–ABR 2025 × 2026</div>
+      <div class="chart-wrap tall"><canvas id="chart-cre-comp"></canvas></div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-title"><span class="icon">📋</span> TABELA COMPARATIVA DETALHADA POR CRE</div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>CRE</th>
+            <th>Consumo Jan–Abr 2025 (m³)</th>
+            <th>Consumo Jan–Abr 2026 (m³)</th>
+            <th>Δ Consumo</th>
+            <th>Faturamento 2025 (R$)</th>
+            <th>Faturamento 2026 (R$)</th>
+            <th>Δ Faturamento</th>
+            <th>Tarifa Méd. 2025</th>
+            <th>Tarifa Méd. 2026</th>
+            <th>Alunos</th>
+            <th>m³/Aluno 2025</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-comp"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============= ANOMALIAS ============= -->
+  <div id="tab-anomalias" class="panel">
+    <div class="kpi-grid">
+      <div class="kpi red">
+        <div class="kpi-label">Alertas Críticos</div>
+        <div class="kpi-value big">4</div>
+        <div class="kpi-sub">anomalias de alto risco detectadas</div>
+      </div>
+      <div class="kpi yellow">
+        <div class="kpi-label">Alertas de Atenção</div>
+        <div class="kpi-value big">5</div>
+        <div class="kpi-sub">variações relevantes</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi-label">Alertas Informativos</div>
+        <div class="kpi-value big">3</div>
+        <div class="kpi-sub">tendências e observações</div>
+      </div>
+      <div class="kpi orange">
+        <div class="kpi-label">Impacto Financeiro Est.</div>
+        <div class="kpi-value">R$ 2,1 M</div>
+        <div class="kpi-sub">em anomalias identificadas</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">🚨</span> ALERTAS CRÍTICOS E DE ATENÇÃO</div>
+        <div class="alert-list">
+          <div class="alert-item">
+            <div class="alert-header">
+              <div class="alert-title">⚠️ CRE 1 — Consumo zero em Julho/2025</div>
+              <div class="alert-badge">CRÍTICO</div>
+            </div>
+            <div class="alert-desc">CRE 1 registrou consumo = 0 m³ em Julho/2025 mas manteve faturamento de R$ 539.774. Possível leitura por média estimada ou falha de hidrômetro. Impacto: R$ 539k sem consumo real verificado.</div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-header">
+              <div class="alert-title">📉 CRE 7 — Colapso de consumo em Abril/2026</div>
+              <div class="alert-badge">CRÍTICO</div>
+            </div>
+            <div class="alert-desc">CRE 7 despencou de 41.134 m³ (Março) para 2.689 m³ (Abril/2026) — queda de 93,5%. Pode indicar interrupção de fornecimento, faturamento incompleto ou erro de lançamento.</div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-header">
+              <div class="alert-title">💰 Tarifa 2026 superior ao consumo</div>
+              <div class="alert-badge">CRÍTICO</div>
+            </div>
+            <div class="alert-desc">Consumo caiu 12,7% em 2026 mas faturamento subiu 3,5%. A tarifa média saltou ~18,6% — acima do IPCA. Revisão contratual e auditoria tarifária são recomendadas urgentemente.</div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-header">
+              <div class="alert-title">🏫 CRE 10 — Maior alunado, menor custo/aluno</div>
+              <div class="alert-badge">CRÍTICO</div>
+            </div>
+            <div class="alert-desc">CRE 10 tem 81.472 alunos (maior CRE) mas apenas 374.543 m³, resultando em 4,6 m³/aluno — o mais eficiente. Porém, queda de consumo de 43,5% em 2026 (Jan–Abr) pode indicar subnotificação.</div>
+          </div>
+          <div class="alert-item warn">
+            <div class="alert-header">
+              <div class="alert-title">📊 CRE 2 — Pico anômalo em Março/2025</div>
+              <div class="alert-badge warn">ATENÇÃO</div>
+            </div>
+            <div class="alert-desc">CRE 2 consumiu 39.622 m³ em Março vs média de ~30.000 m³ — alta de 31,4%. Correlacionar com possível período de recadastramento ou obras.</div>
+          </div>
+          <div class="alert-item warn">
+            <div class="alert-header">
+              <div class="alert-title">💧 CRE 6 — Abr/2026 com leitura parcial suspeita</div>
+              <div class="alert-badge warn">ATENÇÃO</div>
+            </div>
+            <div class="alert-desc">CRE 6 teve queda brusca de 20.572 m³ (Março/2026) para 8.346 m³ (Abril/2026) — 59,4% de redução. Período anormalmente baixo para uma CRE com 33.192 alunos.</div>
+          </div>
+          <div class="alert-item warn">
+            <div class="alert-header">
+              <div class="alert-title">📈 CRE 7 — Maior consumidor absoluto</div>
+              <div class="alert-badge warn">ATENÇÃO</div>
+            </div>
+            <div class="alert-desc">CRE 7 representa 14,4% do consumo total da rede com apenas 13,6% dos alunos (67.048). Taxa de 6,95 m³/aluno/ano — acima da média de 6,58. Potencial de revisão de rotinas.</div>
+          </div>
+          <div class="alert-item info">
+            <div class="alert-header">
+              <div class="alert-title">✅ Tendência positiva: consumo geral cai em 2026</div>
+              <div class="alert-badge info">INFO</div>
+            </div>
+            <div class="alert-desc">Nos 3 primeiros meses completos de 2026 (Jan–Mar), 8 das 11 CREs reduziram consumo vs 2025. CREs 3, 9 e 10 se destacam com reduções superiores a 15%.</div>
+          </div>
+          <div class="alert-item info">
+            <div class="alert-header">
+              <div class="alert-title">🔬 NC — Unidades administrativas sob controle</div>
+              <div class="alert-badge info">INFO</div>
+            </div>
+            <div class="alert-desc">As 5 unidades administrativas (NC) representam apenas 0,15% do consumo total. Porém, a tarifa média das UAs é elevada — acompanhar para detectar vazamentos em prédios sem telemetria.</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title"><span class="icon">📉</span> CONSUMO ANÔMALO — CRE 1 vs MÉDIA 2025</div>
+          <div class="chart-wrap"><canvas id="chart-anom1"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="icon">🔥</span> SCORE DE RISCO POR CRE</div>
+          <div id="risk-list">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============= PROJEÇÕES ============= -->
+  <div id="tab-projecoes" class="panel">
+    <div class="section-title">📐 PROJEÇÕES PARA 2026 (BASE JAN–ABR REAL)</div>
+
+    <div class="kpi-grid">
+      <div class="kpi blue">
+        <div class="kpi-label">Consumo Projetado 2026</div>
+        <div class="kpi-value big">2,930 M</div>
+        <div class="kpi-sub">m³ (projeção linear · -9,7% vs 2025)</div>
+      </div>
+      <div class="kpi orange">
+        <div class="kpi-label">Faturamento Projetado 2026</div>
+        <div class="kpi-value big">R$ 114 M</div>
+        <div class="kpi-sub">+1,4% vs 2025 (tarifa compensa redução)</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">Potencial de Economia (5%)</div>
+        <div class="kpi-value big">R$ 5,7 M</div>
+        <div class="kpi-sub">com programa de eficiência hídrica</div>
+      </div>
+      <div class="kpi yellow">
+        <div class="kpi-label">Potencial de Economia (10%)</div>
+        <div class="kpi-value big">R$ 11,4 M</div>
+        <div class="kpi-sub">com retrofit e monitoramento IoT</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">🔮</span> PROJEÇÃO CONSUMO 2026 (MENSAL)</div>
+        <div class="chart-wrap tall"><canvas id="chart-proj-consumo"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">💹</span> PROJEÇÃO FATURAMENTO 2026 (MENSAL)</div>
+        <div class="chart-wrap tall"><canvas id="chart-proj-fat"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-title">💡 POTENCIAIS DE ECONOMIA</div>
+    <div class="grid-3">
+      <div class="proj-card">
+        <div class="eco-value">R$ 5,7M</div>
+        <div class="eco-label">🌿 Cenário Conservador (-5%)</div>
+        <div class="eco-items">
+          <div class="eco-item"><span>Redução de consumo</span><span class="eco-item-val">146.500 m³</span></div>
+          <div class="eco-item"><span>Faturamento alvo</span><span class="eco-item-val">R$ 108,3 M</span></div>
+          <div class="eco-item"><span>Economia anual</span><span class="eco-item-val">R$ 5,7 M</span></div>
+          <div class="eco-item"><span>Ações</span><span class="eco-item-val" style="font-size:.7rem;text-align:right">Conscientização + manutenção preventiva</span></div>
+        </div>
+      </div>
+      <div class="proj-card">
+        <div class="eco-value" style="color:var(--accent)">R$ 11,4M</div>
+        <div class="eco-label">🔧 Cenário Moderado (-10%)</div>
+        <div class="eco-items">
+          <div class="eco-item"><span>Redução de consumo</span><span class="eco-item-val">293.000 m³</span></div>
+          <div class="eco-item"><span>Faturamento alvo</span><span class="eco-item-val">R$ 102,6 M</span></div>
+          <div class="eco-item"><span>Economia anual</span><span class="eco-item-val">R$ 11,4 M</span></div>
+          <div class="eco-item"><span>Ações</span><span class="eco-item-val" style="font-size:.7rem;text-align:right">Telemetria + substituição de hidrômetros</span></div>
+        </div>
+      </div>
+      <div class="proj-card">
+        <div class="eco-value" style="color:var(--warn)">R$ 22,5M</div>
+        <div class="eco-label">🚀 Cenário Otimista (-20%)</div>
+        <div class="eco-items">
+          <div class="eco-item"><span>Redução de consumo</span><span class="eco-item-val">586.000 m³</span></div>
+          <div class="eco-item"><span>Faturamento alvo</span><span class="eco-item-val">R$ 91,2 M</span></div>
+          <div class="eco-item"><span>Economia anual</span><span class="eco-item-val">R$ 22,5 M</span></div>
+          <div class="eco-item"><span>Ações</span><span class="eco-item-val" style="font-size:.7rem;text-align:right">Retrofit sanitário + reutilização de água</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-title"><span class="icon">🎯</span> PRIORIDADES DE INTERVENÇÃO — RANKING POR POTENCIAL DE ECONOMIA</div>
+      <table class="data-table">
+        <thead>
+          <tr><th>Prioridade</th><th>CRE</th><th>Consumo 2025 (m³)</th><th>m³/Aluno</th><th>Benchmark SME (m³/aluno)</th><th>Excedente (m³)</th><th>Economia Potencial (R$)</th><th>Nível de Urgência</th></tr>
+        </thead>
+        <tbody id="tbody-eco"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============= CREs ============= -->
+  <div id="tab-cres" class="panel">
+    <div class="kpi-grid">
+      <div class="kpi blue"><div class="kpi-label">Benchmark m³/aluno/ano</div><div class="kpi-value">6,58</div><div class="kpi-sub">média da rede SME 2025</div></div>
+      <div class="kpi green"><div class="kpi-label">Melhor CRE (consumo/aluno)</div><div class="kpi-value">CRE 10</div><div class="kpi-sub">4,60 m³/aluno · 30% abaixo da média</div></div>
+      <div class="kpi red"><div class="kpi-label">Pior CRE (consumo/aluno)</div><div class="kpi-value">CRE 11</div><div class="kpi-sub">6,33 m³/aluno — menor rede</div></div>
+      <div class="kpi orange"><div class="kpi-label">Maior Fatura Total 2025</div><div class="kpi-value">CRE 7</div><div class="kpi-sub">R$ 17,6 M · 15,7% do orçamento</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">📊</span> CONSUMO POR CRE — 2025 vs 2026 Jan–Abr</div>
+        <div class="chart-wrap tall"><canvas id="chart-cre-bars"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">💰</span> FATURAMENTO POR CRE — 2025 TOTAL</div>
+        <div class="chart-wrap tall"><canvas id="chart-cre-fat"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:0">
+      <div class="card-title"><span class="icon">🏆</span> RANKING DE PERFORMANCE POR CRE</div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th><th>CRE</th><th>Alunos</th>
+            <th>Consumo 2025 (m³)</th><th>m³/Aluno</th>
+            <th>Faturamento 2025 (R$)</th><th>Custo/Aluno (R$)</th>
+            <th>Cons. 2026 Jan–Abr</th><th>Δ vs 2025</th>
+            <th>Performance</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-cre"></tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-title"><span class="icon">📈</span> EVOLUÇÃO MENSAL POR CRE — 2025 (m³)</div>
+      <div class="chart-wrap tall" style="height:360px"><canvas id="chart-cre-monthly"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ========================= DATA =========================
+const MONTHS = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+
+const data2025 = {
+  monthly_consumo: [226229, 238783, 289230, 279968, 281187, 291760, 254583, 244793, 295242, 291868, 286891, 265578],
+  monthly_fat:     [7603366, 8134408, 9916825, 9526253, 9585084, 10186726, 9217715, 8407231, 10071781, 10094944, 10118275, 9524684],
+  cre: {
+    '1':  {consumo: 155114, fat: 6464439},
+    '2':  {consumo: 371313, fat: 13988515},
+    '3':  {consumo: 261513, fat: 10035955},
+    '4':  {consumo: 353588, fat: 13990672},
+    '5':  {consumo: 199210, fat: 7042187},
+    '6':  {consumo: 257413, fat: 9564761},
+    '7':  {consumo: 465986, fat: 17621798},
+    '8':  {consumo: 386306, fat: 11231732},
+    '9':  {consumo: 345207, fat: 9970026},
+    '10': {consumo: 374543, fat: 9628985},
+    '11': {consumo: 71172,  fat: 2671722},
+  },
+  cre_monthly: {
+    '1':  [11473,10853,14313,15963,19696,11671,0,11997,17677,14821,13171,13479],
+    '2':  [31490,29381,39622,27439,30979,34536,28896,26303,32074,33725,25053,31815],
+    '3':  [19276,18666,26472,22014,22624,26401,21366,21507,22877,21461,20356,18493],
+    '4':  [24404,25341,29839,31091,31857,32671,29353,29221,31465,30494,30530,27322],
+    '5':  [13857,14137,16350,17847,16589,18152,16230,15289,18805,18820,16790,16344],
+    '6':  [17036,20212,20657,20933,21634,25554,21530,17588,20751,23946,24566,23006],
+    '7':  [29771,32333,40083,36929,36948,36170,37752,40447,46247,43089,46559,39658],
+    '8':  [26299,27660,32832,33416,33685,34533,31719,30816,32925,32528,31779,28314],
+    '9':  [23385,24481,28982,28843,29109,27912,29838,25956,28681,27779,26832,23409],
+    '10': [23775,26024,29854,28697,26870,29135,31391,24854,30072,31393,30832,22646],
+    '11': [5216,5789,6526,6797,6995,6796,6106,6022,6453,6290,6217,4965],
+  }
+};
+
+const data2026 = {
+  monthly_consumo: [222954, 213797, 261157, 104124, 0, 0, 0, 0, 0, 0, 0, 0],
+  monthly_fat:     [8116740, 7661211, 9578285, 4766020, 0, 0, 0, 0, 0, 0, 0, 0],
+  cre: {
+    '1':  {consumo: 61743, fat: 2480901},
+    '2':  {consumo: 91303, fat: 3657305},
+    '3':  {consumo: 54267, fat: 2232400},
+    '4':  {consumo: 96959, fat: 4101770},
+    '5':  {consumo: 59372, fat: 2237675},
+    '6':  {consumo: 64019, fat: 3097568},
+    '7':  {consumo: 110980, fat: 4449512},
+    '8':  {consumo: 91230, fat: 2749286},
+    '9':  {consumo: 71151, fat: 2114092},
+    '10': {consumo: 78723, fat: 2096641},
+    '11': {consumo: 21759, fat: 885224},
+  }
+};
+
+const alunos = {
+  '1': 23379, '2': 32742, '3': 37895, '4': 50107, '5': 36873,
+  '6': 33192, '7': 67048, '8': 60072, '9': 59558, '10': 81472, '11': 11243
+};
+
+const CRE_LABELS = ['1','2','3','4','5','6','7','8','9','10','11'];
+
+// ========================= CHART DEFAULTS =========================
+Chart.defaults.color = '#6b8fa8';
+Chart.defaults.borderColor = 'rgba(26,51,80,.5)';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+
+const chartPalette = [
+  '#00d4ff','#ff6b35','#00ff9f','#ffcc00','#ff3b3b',
+  '#a855f7','#06b6d4','#f59e0b','#10b981','#ef4444','#8b5cf6'
+];
+
+function mkLine(ctx, labels, datasets, opts={}) {
+  return new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { boxWidth: 12, padding: 15, font: {size: 11} } } },
+      scales: {
+        x: { grid: { color: 'rgba(26,51,80,.4)' }, ticks: { font: {size: 10} } },
+        y: { grid: { color: 'rgba(26,51,80,.4)' }, ticks: { font: {size: 10}, callback: v => opts.money ? 'R$'+fmt(v/1e6)+'M' : fmt(v/1000)+'k' } }
+      },
+      ...opts.extra
+    }
+  });
+}
+
+function mkBar(ctx, labels, datasets, opts={}) {
+  return new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { boxWidth: 12, padding: 15, font: {size: 11} } } },
+      scales: {
+        x: { grid: { color: 'rgba(26,51,80,.3)' }, ticks: { font: {size: 10} } },
+        y: { grid: { color: 'rgba(26,51,80,.4)' }, ticks: { font: {size: 10}, callback: v => opts.money ? 'R$'+fmt(v/1e6)+'M' : fmt(v/1000)+'k' } }
+      },
+      ...opts.extra
+    }
+  });
+}
+
+function mkDoughnut(ctx, labels, data, colors) {
+  return new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#0d1a26', borderWidth: 3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: {size: 11} } } }
+    }
+  });
+}
+
+function fmt(n) {
+  if (n === undefined || n === null) return '—';
+  return Number(n).toLocaleString('pt-BR', {maximumFractionDigits: 1});
+}
+function fmtM(n) { return 'R$ ' + fmt(n/1e6) + 'M'; }
+function fmtK(n) { return fmt(n/1000) + 'k'; }
+
+// ========================= BUILD CHARTS =========================
+function buildPanorama() {
+  // Monthly consumo 2025
+  mkLine(document.getElementById('chart-monthly25').getContext('2d'), MONTHS,
+    [{label:'Consumo (m³)', data: data2025.monthly_consumo, borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.08)', fill:true, tension:.4, pointRadius:4, pointBackgroundColor:'#00d4ff'}]);
+
+  // Monthly fat 2025
+  mkLine(document.getElementById('chart-fat25').getContext('2d'), MONTHS,
+    [{label:'Faturamento (R$)', data: data2025.monthly_fat, borderColor:'#ff6b35', backgroundColor:'rgba(255,107,53,.08)', fill:true, tension:.4, pointRadius:4, pointBackgroundColor:'#ff6b35'}],
+    {money: true});
+
+  // Concessionária doughnut
+  mkDoughnut(document.getElementById('chart-conc').getContext('2d'),
+    ['Águas do Rio 4', 'Zona Oeste Mais', 'Iguá Rio', 'Águas do Rio 1'],
+    [57482267, 31075637, 16381162, 7447793],
+    ['#00d4ff','#ff6b35','#00ff9f','#ffcc00']);
+
+  // CRE 2025 horizontal bar
+  mkBar(document.getElementById('chart-cre25').getContext('2d'),
+    CRE_LABELS.map(c => 'CRE '+c),
+    [{label:'Consumo 2025 (m³)', data: CRE_LABELS.map(c => data2025.cre[c].consumo), backgroundColor: CRE_LABELS.map((c,i) => chartPalette[i]), borderRadius: 4}],
+    {extra: {indexAxis: 'y', plugins: {legend:{display:false}}}});
+}
+
+function buildComparativo() {
+  const months4 = ['JAN','FEV','MAR','ABR'];
+  const c25 = data2025.monthly_consumo.slice(0,4);
+  const c26 = data2026.monthly_consumo.slice(0,4);
+  const f25 = data2025.monthly_fat.slice(0,4);
+  const f26 = data2026.monthly_fat.slice(0,4);
+
+  mkLine(document.getElementById('chart-comp-consumo').getContext('2d'), months4,
+    [{label:'2025 (m³)', data:c25, borderColor:'#6b8fa8', backgroundColor:'rgba(107,143,168,.1)', fill:true, tension:.4, pointRadius:5},
+     {label:'2026 (m³)', data:c26, borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.12)', fill:true, tension:.4, pointRadius:5}]);
+
+  mkLine(document.getElementById('chart-comp-fat').getContext('2d'), months4,
+    [{label:'2025 (R$)', data:f25, borderColor:'#6b8fa8', backgroundColor:'rgba(107,143,168,.1)', fill:true, tension:.4, pointRadius:5},
+     {label:'2026 (R$)', data:f26, borderColor:'#ff6b35', backgroundColor:'rgba(255,107,53,.12)', fill:true, tension:.4, pointRadius:5}],
+    {money:true});
+
+  // CRE comparison bar
+  const c25jan4 = CRE_LABELS.map(c => data2025.cre_monthly[c].slice(0,4).reduce((a,b)=>a+b,0));
+  const c26jan4 = CRE_LABELS.map(c => data2026.cre[c].consumo);
+  mkBar(document.getElementById('chart-cre-comp').getContext('2d'),
+    CRE_LABELS.map(c => 'CRE '+c),
+    [{label:'Jan–Abr 2025', data:c25jan4, backgroundColor:'rgba(107,143,168,.5)', borderColor:'#6b8fa8', borderRadius:4},
+     {label:'Jan–Abr 2026', data:c26jan4, backgroundColor:'rgba(0,212,255,.7)', borderColor:'#00d4ff', borderRadius:4}]);
+
+  // Table
+  const tbody = document.getElementById('tbody-comp');
+  tbody.innerHTML = '';
+  const benchmark = 3246112 / Object.values(alunos).reduce((a,b)=>a+b,0);
+  CRE_LABELS.forEach(c => {
+    const c25_4 = data2025.cre_monthly[c].slice(0,4).reduce((a,b)=>a+b,0);
+    const c26_4 = data2026.cre[c].consumo;
+    const deltaC = ((c26_4 - c25_4)/c25_4*100);
+    const f25_4 = data2025.monthly_fat.slice(0,4).reduce((a,b)=>a+b,0) * (c25_4 / data2025.monthly_consumo.slice(0,4).reduce((a,b)=>a+b,0));
+    const f26_4 = data2026.cre[c].fat;
+    const deltaF = ((f26_4 - f25_4)/f25_4*100);
+    const tar25 = c25_4>0 ? f25_4/c25_4 : 0;
+    const tar26 = c26_4>0 ? f26_4/c26_4 : 0;
+    const dcClass = deltaC < -5 ? 'good-cell' : deltaC > 5 ? 'danger-cell' : '';
+    const dfClass = deltaF > 10 ? 'danger-cell' : deltaF < -5 ? 'good-cell' : 'warn-cell';
+    tbody.innerHTML += `<tr>
+      <td class="highlight">CRE ${c}</td>
+      <td>${fmt(c25_4)}</td>
+      <td>${fmt(c26_4)}</td>
+      <td class="${dcClass}">${deltaC>0?'+':''}${fmt(deltaC)}%</td>
+      <td>R$ ${fmt(f25_4)}</td>
+      <td>R$ ${fmt(f26_4)}</td>
+      <td class="${dfClass}">${deltaF>0?'+':''}${fmt(deltaF)}%</td>
+      <td>R$ ${fmt(tar25)}/m³</td>
+      <td>R$ ${fmt(tar26)}/m³</td>
+      <td>${fmt(alunos[c])}</td>
+      <td>${fmt(data2025.cre[c].consumo/alunos[c])}</td>
+    </tr>`;
+  });
+}
+
+function buildAnomalias() {
+  // CRE 1 anomaly chart
+  mkBar(document.getElementById('chart-anom1').getContext('2d'), MONTHS,
+    [{label:'CRE 1 — Consumo (m³)', data: data2025.cre_monthly['1'],
+      backgroundColor: data2025.cre_monthly['1'].map((v,i) => v === 0 ? 'rgba(255,59,59,.8)' : 'rgba(0,212,255,.6)'),
+      borderRadius: 4}]);
+
+  // Risk list
+  const riskEl = document.getElementById('risk-list');
+  const risks = CRE_LABELS.map(c => {
+    const c25_4 = data2025.cre_monthly[c].slice(0,4).reduce((a,b)=>a+b,0);
+    const c26_4 = data2026.cre[c].consumo;
+    const delta = (c26_4 - c25_4) / c25_4;
+    const mpa = data2025.cre[c].consumo / alunos[c];
+    let score = 0;
+    if (Math.abs(delta) > 0.3) score += 3;
+    else if (Math.abs(delta) > 0.15) score += 2;
+    else score += 1;
+    if (mpa > 7) score += 2;
+    else if (mpa > 6.5) score += 1;
+    const zeros = data2025.cre_monthly[c].filter(v=>v===0).length;
+    score += zeros;
+    return {cre: c, score, delta, mpa, zeros};
+  }).sort((a,b) => b.score - a.score);
+
+  riskEl.innerHTML = risks.map(r => {
+    const pct = Math.min(r.score / 8 * 100, 100);
+    const color = r.score >= 5 ? '#ff3b3b' : r.score >= 3 ? '#ffcc00' : '#00ff9f';
+    return `<div class="progress-item">
+      <div class="progress-meta">
+        <span>CRE ${r.cre} &nbsp;—&nbsp; <small>${r.zeros} mês(es) sem leitura · ${fmt(r.mpa)} m³/aluno</small></span>
+        <span style="color:${color};font-weight:700">Score ${r.score}/8</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function buildProjecoes() {
+  // Projection: use Jan-Mar 2026 rate applied to rest of 2025 pattern
+  const ratio_consumo = [222954,213797,261157].reduce((a,b)=>a+b,0) / data2025.monthly_consumo.slice(0,3).reduce((a,b)=>a+b,0);
+  const ratio_fat = [8116740,7661211,9578285].reduce((a,b)=>a+b,0) / data2025.monthly_fat.slice(0,3).reduce((a,b)=>a+b,0);
+  const proj_consumo = MONTHS.map((m,i) => i < 3 ? data2026.monthly_consumo[i] : Math.round(data2025.monthly_consumo[i] * ratio_consumo));
+  const proj_fat = MONTHS.map((m,i) => i < 3 ? data2026.monthly_fat[i] : Math.round(data2025.monthly_fat[i] * ratio_fat));
+
+  mkLine(document.getElementById('chart-proj-consumo').getContext('2d'), MONTHS,
+    [{label:'2025 Real', data: data2025.monthly_consumo, borderColor:'rgba(107,143,168,.6)', borderDash:[5,5], tension:.4, pointRadius:3},
+     {label:'2026 Real (Jan–Mar)', data: [...data2026.monthly_consumo.slice(0,3), null, null, null, null, null, null, null, null, null], borderColor:'#00d4ff', tension:.4, pointRadius:5, spanGaps:false},
+     {label:'2026 Projeção', data: proj_consumo.map((v,i) => i < 3 ? null : v), borderColor:'#00d4ff', borderDash:[8,4], backgroundColor:'rgba(0,212,255,.05)', fill:true, tension:.4, pointRadius:3, spanGaps:false}]);
+
+  mkLine(document.getElementById('chart-proj-fat').getContext('2d'), MONTHS,
+    [{label:'2025 Real', data: data2025.monthly_fat, borderColor:'rgba(107,143,168,.6)', borderDash:[5,5], tension:.4, pointRadius:3},
+     {label:'2026 Real (Jan–Mar)', data: [...data2026.monthly_fat.slice(0,3), null, null, null, null, null, null, null, null, null], borderColor:'#ff6b35', tension:.4, pointRadius:5, spanGaps:false},
+     {label:'2026 Projeção', data: proj_fat.map((v,i) => i < 3 ? null : v), borderColor:'#ff6b35', borderDash:[8,4], backgroundColor:'rgba(255,107,53,.05)', fill:true, tension:.4, pointRadius:3, spanGaps:false}],
+    {money:true});
+
+  // Economy table
+  const totalC25 = 3246112;
+  const totalF25 = 112387292;
+  const benchmarkMpa = totalC25 / Object.values(alunos).reduce((a,b)=>a+b,0); // 6.58
+  const tbody = document.getElementById('tbody-eco');
+  tbody.innerHTML = '';
+  const rows = CRE_LABELS.map(c => {
+    const mpa = data2025.cre[c].consumo / alunos[c];
+    const excess = Math.max(0, (mpa - benchmarkMpa) * alunos[c]);
+    const tarifa = data2025.cre[c].fat / data2025.cre[c].consumo;
+    const ecoR = excess * tarifa;
+    return {c, mpa, excess, ecoR, consumo: data2025.cre[c].consumo};
+  }).sort((a,b) => b.excess - a.excess);
+  rows.forEach((r, idx) => {
+    const urgencia = r.excess > 20000 ? '<span style="color:var(--danger)">🔴 ALTA</span>' :
+                     r.excess > 5000  ? '<span style="color:var(--warn)">🟡 MÉDIA</span>' :
+                                         '<span style="color:var(--accent3)">🟢 BAIXA</span>';
+    tbody.innerHTML += `<tr>
+      <td class="highlight">#${idx+1}</td>
+      <td>CRE ${r.c}</td>
+      <td>${fmt(r.consumo)}</td>
+      <td class="${r.mpa > 7 ? 'danger-cell' : r.mpa < benchmarkMpa ? 'good-cell' : ''}">${fmt(r.mpa)}</td>
+      <td>${fmt(benchmarkMpa)}</td>
+      <td class="${r.excess > 0 ? 'warn-cell' : 'good-cell'}">${r.excess > 0 ? '+'+fmt(r.excess) : '≤ benchmark'}</td>
+      <td class="${r.excess > 0 ? 'danger-cell' : 'good-cell'}">R$ ${fmt(r.ecoR)}</td>
+      <td>${urgencia}</td>
+    </tr>`;
+  });
+}
+
+function buildCREs() {
+  // CRE comparison bars
+  const c25_4 = CRE_LABELS.map(c => data2025.cre_monthly[c].slice(0,4).reduce((a,b)=>a+b,0));
+  const c26_4 = CRE_LABELS.map(c => data2026.cre[c].consumo);
+  mkBar(document.getElementById('chart-cre-bars').getContext('2d'),
+    CRE_LABELS.map(c=>'CRE '+c),
+    [{label:'Jan–Abr 2025', data:c25_4, backgroundColor:'rgba(107,143,168,.5)', borderColor:'#6b8fa8', borderRadius:4},
+     {label:'Jan–Abr 2026', data:c26_4, backgroundColor:'rgba(0,212,255,.7)', borderColor:'#00d4ff', borderRadius:4}]);
+
+  // CRE faturamento 2025
+  mkBar(document.getElementById('chart-cre-fat').getContext('2d'),
+    CRE_LABELS.map(c=>'CRE '+c),
+    [{label:'Faturamento 2025 (R$)', data: CRE_LABELS.map(c=>data2025.cre[c].fat),
+      backgroundColor: CRE_LABELS.map((c,i)=>chartPalette[i]+'bb'), borderRadius:4}],
+    {money:true, extra:{plugins:{legend:{display:false}}}});
+
+  // CRE monthly line chart (top 4 CREs)
+  const top4 = ['7','4','2','8'];
+  mkLine(document.getElementById('chart-cre-monthly').getContext('2d'), MONTHS,
+    top4.map((c,i) => ({
+      label: 'CRE '+c, data: data2025.cre_monthly[c],
+      borderColor: chartPalette[i], backgroundColor: chartPalette[i]+'22', fill:false, tension:.4, pointRadius:3
+    })));
+
+  // CRE ranking table
+  const tbody = document.getElementById('tbody-cre');
+  tbody.innerHTML = '';
+  const benchmarkMpa = 6.58;
+  const rows = CRE_LABELS.map(c => {
+    const mpa = data2025.cre[c].consumo / alunos[c];
+    const cpa = data2025.cre[c].fat / alunos[c];
+    const c25_4 = data2025.cre_monthly[c].slice(0,4).reduce((a,b)=>a+b,0);
+    const c26_4 = data2026.cre[c].consumo;
+    const delta = (c26_4 - c25_4)/c25_4*100;
+    return {c, mpa, cpa, delta, alunos: alunos[c]};
+  }).sort((a,b) => a.mpa - b.mpa);
+  rows.forEach((r, idx) => {
+    const perf = r.mpa < benchmarkMpa * 0.95 ? '🏆 <span style="color:var(--accent3)">Eficiente</span>' :
+                 r.mpa > benchmarkMpa * 1.10 ? '⚠️ <span style="color:var(--danger)">Atenção</span>' :
+                 '✅ <span style="color:var(--warn)">Regular</span>';
+    const deltaClass = r.delta < -5 ? 'good-cell' : r.delta > 5 ? 'danger-cell' : '';
+    tbody.innerHTML += `<tr>
+      <td class="highlight">#${idx+1}</td>
+      <td>CRE ${r.c}</td>
+      <td>${fmt(r.alunos)}</td>
+      <td>${fmt(data2025.cre[r.c].consumo)}</td>
+      <td class="${r.mpa < benchmarkMpa ? 'good-cell' : r.mpa > 7 ? 'danger-cell' : ''}">${fmt(r.mpa)}</td>
+      <td>R$ ${fmt(data2025.cre[r.c].fat)}</td>
+      <td>R$ ${fmt(r.cpa)}</td>
+      <td>${fmt(data2026.cre[r.c].consumo)}</td>
+      <td class="${deltaClass}">${r.delta > 0 ? '+' : ''}${fmt(r.delta)}%</td>
+      <td>${perf}</td>
+    </tr>`;
+  });
+}
+
+// ========================= TAB SWITCHING =========================
+const chartBuilders = {
+  panorama: buildPanorama,
+  comparativo: buildComparativo,
+  anomalias: buildAnomalias,
+  projecoes: buildProjecoes,
+  cres: buildCREs
+};
+const built = {};
+
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${id}')"]`).classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  if (!built[id]) {
+    chartBuilders[id]();
+    built[id] = true;
+  }
+}
+
+// Build first tab on load
+window.addEventListener('DOMContentLoaded', () => {
+  buildPanorama();
+  built.panorama = true;
+});
+</script>
+</body>
+</html>
