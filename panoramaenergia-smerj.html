@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panorama Consumo de Energia (LIGHT) — SME RJ</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1f2d45;
+    --accent: #00e5c3;
+    --accent2: #ff6b35;
+    --accent3: #a78bfa;
+    --warn: #fbbf24;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --green: #22c55e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,195,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,195,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .header-left h1 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    background: linear-gradient(135deg, var(--accent), #7dd3fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-left p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-top: 6px;
+    font-family: Arial, sans-serif;
+  }
+
+  .badge-live {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,229,195,0.1);
+    border: 1px solid rgba(0,229,195,0.3);
+    padding: 8px 16px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-family: Arial, sans-serif;
+    color: var(--accent);
+  }
+
+  .dot-live {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 32px;
+    width: fit-content;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: Arial, sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: #0a0e1a;
+  }
+
+  .tab:hover:not(.active) { color: var(--text); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* KPI CARDS */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0,229,195,0.3);
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+
+  .kpi-card.warn::before { background: linear-gradient(90deg, var(--warn), transparent); }
+  .kpi-card.danger::before { background: linear-gradient(90deg, var(--danger), transparent); }
+  .kpi-card.accent2::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .kpi-card.purple::before { background: linear-gradient(90deg, var(--accent3), transparent); }
+
+  .kpi-icon {
+    font-size: 1.4rem;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .kpi-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    font-family: Arial, sans-serif;
+  }
+
+  .kpi-value {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .kpi-sub {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 6px;
+    font-family: Arial, sans-serif;
+  }
+
+  .kpi-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 100px;
+    margin-top: 8px;
+  }
+
+  .kpi-delta.down { background: rgba(34,197,94,0.15); color: var(--green); }
+  .kpi-delta.up { background: rgba(239,68,68,0.15); color: var(--danger); }
+  .kpi-delta.neutral { background: rgba(251,191,36,0.15); color: var(--warn); }
+
+  /* CHART CARDS */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    transition: border-color 0.2s;
+  }
+
+  .chart-card:hover { border-color: rgba(0,229,195,0.2); }
+
+  .col-8 { grid-column: span 8; }
+  .col-7 { grid-column: span 7; }
+  .col-6 { grid-column: span 6; }
+  .col-5 { grid-column: span 5; }
+  .col-4 { grid-column: span 4; }
+  .col-12 { grid-column: span 12; }
+
+  @media(max-width: 900px) {
+    .col-8, .col-7, .col-6, .col-5, .col-4, .col-12 { grid-column: span 12; }
+  }
+
+  .chart-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chart-title span { color: var(--accent); }
+
+  .chart-wrapper {
+    position: relative;
+  }
+
+  /* ALERTS */
+  .alerts-section { margin-bottom: 24px; }
+
+  .alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    border-left: 3px solid;
+    animation: slideIn 0.4s ease forwards;
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  @keyframes slideIn {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .alert-item.critical {
+    background: rgba(239,68,68,0.08);
+    border-color: var(--danger);
+  }
+
+  .alert-item.warning {
+    background: rgba(251,191,36,0.08);
+    border-color: var(--warn);
+  }
+
+  .alert-item.info {
+    background: rgba(167,139,250,0.08);
+    border-color: var(--accent3);
+  }
+
+  .alert-item.success {
+    background: rgba(34,197,94,0.08);
+    border-color: var(--green);
+  }
+
+  .alert-icon { font-size: 1.4rem; flex-shrink: 0; }
+
+  .alert-body h4 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .alert-body p {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .alert-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-family: Arial, sans-serif;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .alert-item.critical .alert-badge { background: rgba(239,68,68,0.2); color: var(--danger); }
+  .alert-item.warning .alert-badge { background: rgba(251,191,36,0.2); color: var(--warn); }
+  .alert-item.info .alert-badge { background: rgba(167,139,250,0.2); color: var(--accent3); }
+  .alert-item.success .alert-badge { background: rgba(34,197,94,0.2); color: var(--green); }
+
+  /* TABLE */
+  .table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  thead th {
+    background: var(--surface2);
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: Arial, sans-serif;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid rgba(31,45,69,0.5);
+    transition: background 0.15s;
+  }
+
+  tbody tr:hover { background: rgba(0,229,195,0.04); }
+
+  tbody td {
+    padding: 12px 16px;
+    white-space: nowrap;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    font-family: Arial, sans-serif;
+    text-transform: uppercase;
+  }
+
+  .tag-em { background: rgba(0,229,195,0.15); color: var(--accent); }
+  .tag-edi { background: rgba(167,139,250,0.15); color: var(--accent3); }
+  .tag-cm { background: rgba(251,191,36,0.15); color: var(--warn); }
+  .tag-ua { background: rgba(99,102,241,0.15); color: #818cf8; }
+
+  .bar-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bar-bg {
+    flex: 1;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 60px;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), #7dd3fc);
+    transition: width 1s ease;
+  }
+
+  /* PROJECTION TABLE */
+  .proj-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .proj-cell {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 14px 12px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+
+  .proj-month {
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: Arial, sans-serif;
+    margin-bottom: 6px;
+  }
+
+  .proj-val {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .proj-cell.actual { border-color: rgba(0,229,195,0.4); }
+  .proj-cell.actual .proj-val { color: var(--accent); }
+  .proj-cell.proj { border-color: rgba(251,191,36,0.2); }
+  .proj-cell.proj .proj-val { color: var(--warn); }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-family: Arial, sans-serif;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 32px 0 16px;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-family: Arial, sans-serif;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  /* PROGRESS RING */
+  .ring-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ring-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
+    font-family: Arial, sans-serif;
+  }
+
+  .rings-row {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  svg.ring circle {
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+  }
+
+  .ring-bg { stroke: var(--surface2); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <h1>Panorama Consumo de Energia (LIGHT) — SME RJ</h1>
+      <p>Coordenadoria Técnica de Operações • 2025-2026</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <div class="badge-live"><div class="dot-live"></div> DADOS ATUALIZADOS</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:8px 16px;font-size:0.75rem;font-family:Arial,sans-serif;color:var(--muted);">
+        📅 Jan/2026 disponível
+      </div>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('visao-geral')">Visão Geral</button>
+    <button class="tab" onclick="showTab('mensal')">Análise Mensal</button>
+    <button class="tab" onclick="showTab('setores')">Por Setor</button>
+    <button class="tab" onclick="showTab('projecao')">Projeção 2026</button>
+    <button class="tab" onclick="showTab('alertas')">Alertas</button>
+    <button class="tab" onclick="showTab('ranking')">Ranking</button>
+  </div>
+
+  <!-- ============ VISÃO GERAL ============ -->
+  <div id="visao-geral" class="tab-content active">
+    <div class="section-title">indicadores principais 2025</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-icon">💰</span>
+        <div class="kpi-label">Gasto Total 2025</div>
+        <div class="kpi-value">R$ 112,8M</div>
+        <div class="kpi-sub">R$ 112.842.277,62</div>
+      </div>
+      <div class="kpi-card accent2">
+        <span class="kpi-icon">⚡</span>
+        <div class="kpi-label">Consumo Total 2025</div>
+        <div class="kpi-value">94,9 GWh</div>
+        <div class="kpi-sub">94.898.779 kWh</div>
+      </div>
+      <div class="kpi-card warn">
+        <span class="kpi-icon">🏫</span>
+        <div class="kpi-label">Unidades Monitoradas</div>
+        <div class="kpi-value">1.650+</div>
+        <div class="kpi-sub">11 CREs + Nível Central</div>
+      </div>
+      <div class="kpi-card purple">
+        <span class="kpi-icon">📊</span>
+        <div class="kpi-label">Tarifa Média</div>
+        <div class="kpi-value">R$ 1,20</div>
+        <div class="kpi-sub">por kWh (média 2025)</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-icon">📅</span>
+        <div class="kpi-label">Mês Mais Caro 2025</div>
+        <div class="kpi-value">R$ 13,8M</div>
+        <div class="kpi-sub">Março 2025</div>
+        <div class="kpi-delta up">↑ Pico anual</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-icon">📉</span>
+        <div class="kpi-label">Mês Mais Barato 2025</div>
+        <div class="kpi-value">R$ 4,9M</div>
+        <div class="kpi-sub">Janeiro 2025</div>
+        <div class="kpi-delta down">↓ Mínimo anual</div>
+      </div>
+    </div>
+
+    <div class="section-title">comparativo janeiro 2025 vs 2026</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-icon">📆</span>
+        <div class="kpi-label">Janeiro 2025</div>
+        <div class="kpi-value">R$ 4,86M</div>
+        <div class="kpi-sub">Referência base</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-icon">📆</span>
+        <div class="kpi-label">Janeiro 2026</div>
+        <div class="kpi-value">R$ 4,13M</div>
+        <div class="kpi-sub">Dado real disponível</div>
+        <div class="kpi-delta down">↓ -15,1%</div>
+      </div>
+      <div class="kpi-card accent2">
+        <span class="kpi-icon">🎯</span>
+        <div class="kpi-label">Projeção Total 2026</div>
+        <div class="kpi-value">R$ 95,8M</div>
+        <div class="kpi-sub">Baseada na tendência Jan</div>
+        <div class="kpi-delta down">↓ -15,1% vs 2025</div>
+      </div>
+      <div class="kpi-card warn">
+        <span class="kpi-icon">⚠️</span>
+        <div class="kpi-label">Setores em Alerta</div>
+        <div class="kpi-value">2</div>
+        <div class="kpi-sub">10ª CRE (-56%) e 9ª CRE (-37%)</div>
+        <div class="kpi-delta neutral">Verificar leituras</div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card col-8">
+        <div class="chart-title">⚡ <span>Evolução Mensal</span> — Consumo & Valor 2025</div>
+        <div class="chart-wrapper" style="height:280px;">
+          <canvas id="chartMensal"></canvas>
+        </div>
+      </div>
+      <div class="chart-card col-4">
+        <div class="chart-title">🏷️ <span>Mix por Tipo</span> de Unidade</div>
+        <div class="chart-wrapper" style="height:240px;">
+          <canvas id="chartTipo"></canvas>
+        </div>
+        <div class="rings-row" style="margin-top:16px;">
+          <div class="ring-wrapper">
+            <svg class="ring" width="70" height="70" viewBox="0 0 70 70">
+              <circle class="ring-bg" cx="35" cy="35" r="28"/>
+              <circle cx="35" cy="35" r="28" stroke="var(--accent)" stroke-dasharray="151.4" stroke-dashoffset="22.7" transform="rotate(-90 35 35)"/>
+            </svg>
+            <div class="ring-label">EM<br>81,8%</div>
+          </div>
+          <div class="ring-wrapper">
+            <svg class="ring" width="70" height="70" viewBox="0 0 70 70">
+              <circle class="ring-bg" cx="35" cy="35" r="28"/>
+              <circle cx="35" cy="35" r="28" stroke="var(--accent3)" stroke-dasharray="151.4" stroke-dashoffset="127.2" transform="rotate(-90 35 35)"/>
+            </svg>
+            <div class="ring-label">EDI<br>11,7%</div>
+          </div>
+          <div class="ring-wrapper">
+            <svg class="ring" width="70" height="70" viewBox="0 0 70 70">
+              <circle class="ring-bg" cx="35" cy="35" r="28"/>
+              <circle cx="35" cy="35" r="28" stroke="var(--warn)" stroke-dasharray="151.4" stroke-dashoffset="143.1" transform="rotate(-90 35 35)"/>
+            </svg>
+            <div class="ring-label">CM<br>4,9%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card col-6">
+        <div class="chart-title">🗺️ <span>Gasto por Setor</span> — 2025 Total</div>
+        <div class="chart-wrapper" style="height:280px;">
+          <canvas id="chartSetor"></canvas>
+        </div>
+      </div>
+      <div class="chart-card col-6">
+        <div class="chart-title">📊 <span>Jan 2025 vs Jan 2026</span> por Setor</div>
+        <div class="chart-wrapper" style="height:280px;">
+          <canvas id="chartComparativo"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MENSAL ============ -->
+  <div id="mensal" class="tab-content">
+    <div class="section-title">análise mensal detalhada — 2025</div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><span class="kpi-icon">📈</span><div class="kpi-label">Média Mensal</div><div class="kpi-value">R$ 9,4M</div><div class="kpi-sub">R$ 9.403.523/mês</div></div>
+      <div class="kpi-card accent2"><span class="kpi-icon">🔼</span><div class="kpi-label">Pico (Março)</div><div class="kpi-value">R$ 13,8M</div><div class="kpi-sub">+47% acima da média</div></div>
+      <div class="kpi-card warn"><span class="kpi-icon">🔽</span><div class="kpi-label">Vale (Janeiro)</div><div class="kpi-value">R$ 4,9M</div><div class="kpi-sub">-48% abaixo da média</div></div>
+      <div class="kpi-card purple"><span class="kpi-icon">📐</span><div class="kpi-label">Desvio Padrão</div><div class="kpi-value">R$ 2,8M</div><div class="kpi-sub">Alta volatilidade sazonal</div></div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card col-12">
+        <div class="chart-title">📅 <span>Valor Mensal 2025</span> — Sazonalidade Completa</div>
+        <div class="chart-wrapper" style="height:320px;">
+          <canvas id="chartMensalBar"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card col-6">
+        <div class="chart-title">⚡ <span>Consumo kWh</span> por Mês 2025</div>
+        <div class="chart-wrapper" style="height:280px;">
+          <canvas id="chartConsumoMes"></canvas>
+        </div>
+      </div>
+      <div class="chart-card col-6">
+        <div class="chart-title">💲 <span>Tarifa Efetiva</span> R$/kWh por Mês</div>
+        <div class="chart-wrapper" style="height:280px;">
+          <canvas id="chartTarifa"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">📋 <span>Tabela Mensal</span> Detalhada 2025</div>
+      <div class="table-wrapper">
+        <table id="tabelaMensal">
+          <thead>
+            <tr>
+              <th>Mês</th>
+              <th>Consumo (kWh)</th>
+              <th>Valor (R$)</th>
+              <th>Tarifa Média</th>
+              <th>% do Total</th>
+              <th>Proporção</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaMensalBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SETORES ============ -->
+  <div id="setores" class="tab-content">
+    <div class="section-title">panorama por setor — 2025</div>
+    <div class="chart-grid">
+      <div class="chart-card col-7">
+        <div class="chart-title">🏆 <span>Ranking de Gastos</span> por CRE 2025</div>
+        <div class="chart-wrapper" style="height:360px;">
+          <canvas id="chartSetorRank"></canvas>
+        </div>
+      </div>
+      <div class="chart-card col-5">
+        <div class="chart-title">📊 <span>Variação</span> Jan 2025 → Jan 2026</div>
+        <div class="chart-wrapper" style="height:300px;">
+          <canvas id="chartVariacao"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">📋 <span>Detalhamento por Setor</span></div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Setor</th>
+              <th>Consumo 2025 (kWh)</th>
+              <th>Valor 2025 (R$)</th>
+              <th>Valor Jan 2025</th>
+              <th>Valor Jan 2026</th>
+              <th>Variação %</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaSetores"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PROJEÇÃO ============ -->
+  <div id="projecao" class="tab-content">
+    <div class="section-title">projeção de gastos 2026</div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-icon">🔭</span>
+        <div class="kpi-label">Projeção Total 2026</div>
+        <div class="kpi-value">R$ 95,8M</div>
+        <div class="kpi-sub">Base: tendência Jan 2026</div>
+        <div class="kpi-delta down">↓ Economia de R$ 17M</div>
+      </div>
+      <div class="kpi-card accent2">
+        <span class="kpi-icon">📊</span>
+        <div class="kpi-label">Fator de Ajuste</div>
+        <div class="kpi-value">-15,1%</div>
+        <div class="kpi-sub">Variação Jan 25→26</div>
+      </div>
+      <div class="kpi-card warn">
+        <span class="kpi-icon">⚡</span>
+        <div class="kpi-label">Consumo Projetado</div>
+        <div class="kpi-value">80,5 GWh</div>
+        <div class="kpi-sub">Estimativa para 2026</div>
+      </div>
+      <div class="kpi-card purple">
+        <span class="kpi-icon">🎯</span>
+        <div class="kpi-label">Conf. da Projeção</div>
+        <div class="kpi-value">MÉDIO</div>
+        <div class="kpi-sub">Apenas Jan/2026 disponível</div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card col-8">
+        <div class="chart-title">📈 <span>Projeção Mensal 2026</span> vs Realizado 2025</div>
+        <div class="chart-wrapper" style="height:300px;">
+          <canvas id="chartProjecao"></canvas>
+        </div>
+      </div>
+      <div class="chart-card col-4">
+        <div class="chart-title">⚖️ <span>Comparativo</span> Anual</div>
+        <div style="height:280px;display:flex;flex-direction:column;justify-content:center;gap:20px;">
+          <div>
+            <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px;font-family:Arial,sans-serif;">REALIZADO 2025</div>
+            <div style="font-size:1.6rem;font-weight:800;color:var(--accent);">R$ 112,84M</div>
+            <div class="bar-bg" style="margin-top:8px;height:10px;"><div class="bar-fill" style="width:100%;"></div></div>
+          </div>
+          <div>
+            <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px;font-family:Arial,sans-serif;">PROJEÇÃO 2026</div>
+            <div style="font-size:1.6rem;font-weight:800;color:var(--warn);">R$ 95,82M</div>
+            <div class="bar-bg" style="margin-top:8px;height:10px;"><div class="bar-fill" style="width:84.9%;background:linear-gradient(90deg,var(--warn),#fde68a);"></div></div>
+          </div>
+          <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:14px;">
+            <div style="font-size:0.7rem;color:var(--green);font-family:Arial,sans-serif;">ECONOMIA PROJETADA</div>
+            <div style="font-size:1.4rem;font-weight:800;color:var(--green);margin-top:4px;">R$ 17,02M</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">📅 <span>Projeção Mês a Mês 2026</span></div>
+      <div class="proj-grid" id="projGrid"></div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">ℹ️ <span>Metodologia</span> de Projeção</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-top:8px;">
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;">
+          <div style="font-size:0.75rem;color:var(--accent);font-family:Arial,sans-serif;margin-bottom:8px;">MÉTODO</div>
+          <p style="font-size:0.83rem;color:var(--text);line-height:1.6;">Aplicação do fator de variação observado em Janeiro 2026 (−15,1%) sobre os valores mensais realizados em 2025, preservando a sazonalidade histórica.</p>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;">
+          <div style="font-size:0.75rem;color:var(--warn);font-family:Arial,sans-serif;margin-bottom:8px;">PREMISSAS</div>
+          <p style="font-size:0.83rem;color:var(--text);line-height:1.6;">A sazonalidade de 2026 seguirá o mesmo padrão de 2025. Não são esperados novos contratos ou inclusões de grandes unidades consumidoras.</p>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;">
+          <div style="font-size:0.75rem;color:var(--danger);font-family:Arial,sans-serif;margin-bottom:8px;">ATENÇÃO</div>
+          <p style="font-size:0.83rem;color:var(--text);line-height:1.6;">A queda em Jan/2026 na 10ª CRE (−56%) e 9ª CRE (−37%) pode indicar ausência de leituras. Esses valores precisam ser verificados antes de confirmar a projeção.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ALERTAS ============ -->
+  <div id="alertas" class="tab-content">
+    <div class="section-title">alertas e anomalias detectadas</div>
+
+    <div class="alerts-section">
+      <div class="alert-item critical" style="animation-delay:0.05s">
+        <div class="alert-icon">🚨</div>
+        <div class="alert-body">
+          <h4>Queda Crítica — 10ª CRE</h4>
+          <p>Janeiro 2026 registrou R$ 280.722 vs R$ 639.750 em Jan 2025. Redução de <strong>−56,1%</strong>. Possível ausência de leituras de medidores ou desligamento de unidades. Requer verificação urgente com o gestor responsável.</p>
+        </div>
+        <div class="alert-badge">−56,1%</div>
+      </div>
+
+      <div class="alert-item critical" style="animation-delay:0.1s">
+        <div class="alert-icon">🚨</div>
+        <div class="alert-body">
+          <h4>Queda Crítica — 9ª CRE</h4>
+          <p>Janeiro 2026 registrou R$ 343.103 vs R$ 545.633 em Jan 2025. Redução de <strong>−37,1%</strong>. Comportamento fora do padrão histórico. Verificar integridade dos dados de medição.</p>
+        </div>
+        <div class="alert-badge">−37,1%</div>
+      </div>
+
+      <div class="alert-item critical" style="animation-delay:0.15s">
+        <div class="alert-icon">⚡</div>
+        <div class="alert-body">
+          <h4>Maior Consumidor: EM Isabel Salgado (7ª CRE)</h4>
+          <p>Em 2025, esta unidade gastou <strong>R$ 1.732.880</strong> — o equivalente a mais de 3× o gasto médio das demais EMs. Representa 1,5% do gasto total da rede. Auditoria energética recomendada.</p>
+        </div>
+        <div class="alert-badge">R$ 1,73M/ano</div>
+      </div>
+
+      <div class="alert-item warning" style="animation-delay:0.2s">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-body">
+          <h4>Pico de Consumo em Março 2025</h4>
+          <p>O mês de março 2025 registrou R$ 13,82M — <strong>184% acima</strong> do valor de janeiro. Este padrão é recorrente e se relaciona ao retorno das aulas e aumento das atividades. Planejar ações de eficiência para o período.</p>
+        </div>
+        <div class="alert-badge">R$ 13,82M</div>
+      </div>
+
+      <div class="alert-item warning" style="animation-delay:0.25s">
+        <div class="alert-icon">📉</div>
+        <div class="alert-body">
+          <h4>Nível Central com Redução de −32,1%</h4>
+          <p>O consumo do Nível Central caiu de R$ 31.958 para R$ 21.688 em jan/2026. Embora de menor impacto absoluto, a queda proporcional é significativa e pode indicar desativação de instalações.</p>
+        </div>
+        <div class="alert-badge">−32,1%</div>
+      </div>
+
+      <div class="alert-item info" style="animation-delay:0.3s">
+        <div class="alert-icon">📊</div>
+        <div class="alert-body">
+          <h4>Concentração: Top 3 Setores = 37,3% do Gasto Total</h4>
+          <p>7ª CRE (13,7%), 10ª CRE (13,4%) e 9ª CRE (12%) concentram mais de 1/3 do orçamento total de energia. Programas de eficiência energética nesses setores gerariam maior impacto na redução de custos.</p>
+        </div>
+        <div class="alert-badge">Concentração</div>
+      </div>
+
+      <div class="alert-item info" style="animation-delay:0.35s">
+        <div class="alert-icon">🏫</div>
+        <div class="alert-body">
+          <h4>CIEP Presidente João Goulart — Alto Consumo Histórico</h4>
+          <p>Segunda unidade mais cara de 2025 com R$ 504.889. CIEPs em geral apresentam consumo elevado devido à sua estrutura de período integral. Verificar se há sistemas de climatização ineficientes.</p>
+        </div>
+        <div class="alert-badge">2ª CRE</div>
+      </div>
+
+      <div class="alert-item success" style="animation-delay:0.4s">
+        <div class="alert-icon">✅</div>
+        <div class="alert-body">
+          <h4>Redução Geral em Jan/2026: −15,1%</h4>
+          <p>A maioria dos setores apresentou redução de custos em Jan/2026 vs Jan/2025. Se a tendência se mantiver, a economia projetada para 2026 é de <strong>R$ 17 milhões</strong>. Bom resultado para o início do ano.</p>
+        </div>
+        <div class="alert-badge">Positivo</div>
+      </div>
+
+      <div class="alert-item success" style="animation-delay:0.45s">
+        <div class="alert-icon">💡</div>
+        <div class="alert-body">
+          <h4>7ª CRE Estável no Comparativo Mensal</h4>
+          <p>Apesar de ser o setor de maior gasto absoluto, a 7ª CRE apresentou variação de apenas <strong>+0,3%</strong> em Jan/2026 vs Jan/2025 — o mais estável dentre todos os setores. Boa gestão do consumo.</p>
+        </div>
+        <div class="alert-badge">+0,3%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RANKING ============ -->
+  <div id="ranking" class="tab-content">
+    <div class="section-title">ranking das unidades — 2025</div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><span class="kpi-icon">🥇</span><div class="kpi-label">1º Lugar Gasto</div><div class="kpi-value" style="font-size:1rem">EM Isabel Salgado</div><div class="kpi-sub">R$ 1.732.880 · 7ª CRE</div></div>
+      <div class="kpi-card accent2"><span class="kpi-icon">🥈</span><div class="kpi-label">2º Lugar Gasto</div><div class="kpi-value" style="font-size:1rem">CIEP Pres. João Goulart</div><div class="kpi-sub">R$ 504.889 · 2ª CRE</div></div>
+      <div class="kpi-card warn"><span class="kpi-icon">🥉</span><div class="kpi-label">3º Lugar Gasto</div><div class="kpi-value" style="font-size:1rem">EM Ginásio Medalhista</div><div class="kpi-sub">R$ 262.451 · 10ª CRE</div></div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">🏆 <span>Top 15 Unidades</span> — Maior Custo Anual 2025</div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Denominação</th>
+              <th>Setor</th>
+              <th>Tipo</th>
+              <th>Valor 2025 (R$)</th>
+              <th>Proporção</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaRanking"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card col-12">
+        <div class="chart-title">📊 <span>Top 10 Unidades</span> por Custo 2025</div>
+        <div class="chart-wrapper" style="height:300px;">
+          <canvas id="chartTopUnidades"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Dashboard gerado via análise científica de dados · Rede Municipal de Educação RJ · LIGHT 2025–2026<br>
+  Fonte: CONSOLIDADO_LIGHT_2025.xlsx e CONSOLIDADO_LIGHT_2026.xlsx · Maio/2026
+</footer>
+
+<script>
+// ============ DATA ============
+const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const mesesFull = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+
+const consumo2025 = [4593505, 10802670, 13468250, 10518750, 7842471, 6977410, 4661631, 4980103, 7719024, 8184545, 8065472, 7084958];
+const valor2025 = [4859961.70, 13282749.99, 13824936.92, 12296348.73, 9188772.61, 8322745.46, 5708820.95, 6076853.52, 9812989.25, 9941140.83, 9840158.88, 9686798.78];
+const fator = 0.8491; // 1 - 0.1509
+const valor2026proj = valor2025.map(v => v * fator);
+valor2026proj[0] = 4126787.15; // valor real jan/2026
+
+const setores = ['1ª CRE','2ª CRE','3ª CRE','4ª CRE','5ª CRE','6ª CRE','7ª CRE','8ª CRE','9ª CRE','10ª CRE','11ª CRE','Nível Central'];
+const setorValor25 = [6016610.55,8532390.69,9461896.59,10856890.68,9325638.54,8018508.69,15454376.10,12788685.28,13578071.55,15143979.55,3313973.17,351256.23];
+const setorValor25Jan = [250261.59,409198.69,411056.01,447501.38,367530.76,395484.97,666445.36,552279.94,545633.33,639750.33,142861.77,31957.57];
+const setorValor26Jan = [225038.96,413992.82,380538.84,440862.74,357633.31,357281.53,668258.35,508482.84,343102.76,280722.29,129184.47,21688.24];
+
+const tarifa = valor2025.map((v,i) => v/consumo2025[i]);
+
+// Chart defaults
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "Arial, sans-serif";
+Chart.defaults.font.size = 11;
+
+function fmtBRL(v) {
+  return 'R$ ' + (v/1e6).toFixed(2) + 'M';
+}
+
+function fmtBRLFull(v) {
+  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ============ CHART 1: MENSAL LINE ============
+new Chart(document.getElementById('chartMensal'), {
+  type: 'line',
+  data: {
+    labels: meses,
+    datasets: [
+      {
+        label: 'Valor 2025',
+        data: valor2025,
+        borderColor: '#00e5c3',
+        backgroundColor: 'rgba(0,229,195,0.08)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: '#00e5c3',
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtBRL(ctx.raw) } } },
+    scales: {
+      x: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' } },
+      y: {
+        grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' },
+        ticks: { callback: v => fmtBRL(v) }
+      }
+    }
+  }
+});
+
+// ============ CHART 2: TIPO DONUT ============
+new Chart(document.getElementById('chartTipo'), {
+  type: 'doughnut',
+  data: {
+    labels: ['EM', 'EDI', 'CM', 'UA', 'Outros'],
+    datasets: [{
+      data: [92283962.50, 13179420.01, 5583718.78, 1625100.35, 170286.18],
+      backgroundColor: ['#00e5c3','#a78bfa','#fbbf24','#6366f1','#475569'],
+      borderWidth: 0,
+      hoverOffset: 8,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, color: '#94a3b8' } },
+      tooltip: { callbacks: { label: ctx => fmtBRL(ctx.raw) } }
+    },
+    cutout: '65%',
+  }
+});
+
+// ============ CHART 3: SETOR BAR ============
+new Chart(document.getElementById('chartSetor'), {
+  type: 'bar',
+  data: {
+    labels: setores.slice(0,11),
+    datasets: [{
+      data: setorValor25.slice(0,11),
+      backgroundColor: setorValor25.slice(0,11).map(v => v > 12000000 ? '#ff6b35' : v > 9000000 ? '#fbbf24' : '#00e5c3'),
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => fmtBRL(ctx.raw) } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' }, ticks: { callback: v => fmtBRL(v) } },
+      y: { grid: { display: false }, border: { color: 'transparent' } }
+    }
+  }
+});
+
+// ============ CHART 4: COMPARATIVO JAN ============
+new Chart(document.getElementById('chartComparativo'), {
+  type: 'bar',
+  data: {
+    labels: setores,
+    datasets: [
+      { label: 'Jan 2025', data: setorValor25Jan, backgroundColor: 'rgba(0,229,195,0.6)', borderRadius: 4 },
+      { label: 'Jan 2026', data: setorValor26Jan, backgroundColor: 'rgba(251,191,36,0.6)', borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 10, color: '#94a3b8' } },
+      tooltip: { callbacks: { label: ctx => fmtBRLFull(ctx.raw) } }
+    },
+    scales: {
+      x: { grid: { display: false }, border: { color: 'transparent' }, ticks: { maxRotation: 45 } },
+      y: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' }, ticks: { callback: v => fmtBRL(v) } }
+    }
+  }
+});
+
+// ============ CHART 5: MENSAL BAR (tab mensal) ============
+new Chart(document.getElementById('chartMensalBar'), {
+  type: 'bar',
+  data: {
+    labels: meses,
+    datasets: [{
+      label: 'Valor 2025',
+      data: valor2025,
+      backgroundColor: valor2025.map(v => v === Math.max(...valor2025) ? '#ff6b35' : v === Math.min(...valor2025) ? '#a78bfa' : 'rgba(0,229,195,0.7)'),
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => fmtBRLFull(ctx.raw) } }
+    },
+    scales: {
+      x: { grid: { display: false }, border: { color: 'transparent' } },
+      y: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' }, ticks: { callback: v => fmtBRL(v) } }
+    }
+  }
+});
+
+// ============ CHART 6: CONSUMO MES ============
+new Chart(document.getElementById('chartConsumoMes'), {
+  type: 'line',
+  data: {
+    labels: meses,
+    datasets: [{
+      label: 'Consumo kWh',
+      data: consumo2025,
+      borderColor: '#a78bfa',
+      backgroundColor: 'rgba(167,139,250,0.08)',
+      borderWidth: 2.5,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: '#a78bfa',
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => (ctx.raw/1e6).toFixed(2) + ' GWh' } } },
+    scales: {
+      x: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' } },
+      y: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' }, ticks: { callback: v => (v/1e6).toFixed(1) + 'M' } }
+    }
+  }
+});
+
+// ============ CHART 7: TARIFA ============
+new Chart(document.getElementById('chartTarifa'), {
+  type: 'line',
+  data: {
+    labels: meses,
+    datasets: [{
+      label: 'R$/kWh',
+      data: tarifa,
+      borderColor: '#fbbf24',
+      backgroundColor: 'rgba(251,191,36,0.08)',
+      borderWidth: 2.5,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: '#fbbf24',
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => 'R$ ' + ctx.raw.toFixed(4) + '/kWh' } } },
+    scales: {
+      x: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' } },
+      y: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' }, ticks: { callback: v => 'R$ ' + v.toFixed(2) } }
+    }
+  }
+});
+
+// ============ CHART 8: SETOR RANK (horizontal) ============
+new Chart(document.getElementById('chartSetorRank'), {
+  type: 'bar',
+  data: {
+    labels: [...setores].reverse(),
+    datasets: [{
+      data: [...setorValor25].reverse(),
+      backgroundColor: [...setorValor25].reverse().map(v => v > 13000000 ? '#ff6b35' : v > 10000000 ? '#fbbf24' : '#00e5c3'),
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtBRLFull(ctx.raw) } } },
+    scales: {
+      x: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' }, ticks: { callback: v => fmtBRL(v) } },
+      y: { grid: { display: false }, border: { color: 'transparent' } }
+    }
+  }
+});
+
+// ============ CHART 9: VARIAÇÃO % ============
+const variacoes = setorValor25Jan.map((v,i) => ((setorValor26Jan[i]-v)/v*100).toFixed(1)*1);
+new Chart(document.getElementById('chartVariacao'), {
+  type: 'bar',
+  data: {
+    labels: setores,
+    datasets: [{
+      data: variacoes,
+      backgroundColor: variacoes.map(v => v < -20 ? 'rgba(239,68,68,0.7)' : v < 0 ? 'rgba(34,197,94,0.6)' : 'rgba(251,191,36,0.6)'),
+      borderRadius: 4,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw + '%' } } },
+    scales: {
+      x: { grid: { display: false }, border: { color: 'transparent' }, ticks: { maxRotation: 45, font: { size: 9 } } },
+      y: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' }, ticks: { callback: v => v + '%' } }
+    }
+  }
+});
+
+// ============ CHART 10: PROJEÇÃO ============
+new Chart(document.getElementById('chartProjecao'), {
+  type: 'line',
+  data: {
+    labels: meses,
+    datasets: [
+      {
+        label: 'Realizado 2025',
+        data: valor2025,
+        borderColor: '#00e5c3',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: '#00e5c3',
+      },
+      {
+        label: 'Projeção 2026',
+        data: valor2026proj,
+        borderColor: '#fbbf24',
+        backgroundColor: 'rgba(251,191,36,0.05)',
+        borderWidth: 2,
+        borderDash: [6,4],
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: (ctx) => ctx.dataIndex === 0 ? '#22c55e' : '#fbbf24',
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 12, color: '#94a3b8' } },
+      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtBRLFull(ctx.raw) } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' } },
+      y: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' }, ticks: { callback: v => fmtBRL(v) } }
+    }
+  }
+});
+
+// ============ CHART 11: TOP UNIDADES ============
+const topNomes = ['EM Isabel Salgado','CIEP Pres. J. Goulart','EM Ginásio Medalhista','CIEP Ulysses Guimarães','CIEP Hildebrando A. Góes','CIEP José Pedro Varela','CIEP Posseiro Mário Vaz','EM Ruy Barbosa','EM Aleksander H. Laks','EM Nelson Prudêncio'];
+const topValores = [1732879.72, 504889.21, 262450.64, 261786.90, 259880.88, 257612.63, 252499.09, 239185.55, 236188.82, 233390.85];
+
+new Chart(document.getElementById('chartTopUnidades'), {
+  type: 'bar',
+  data: {
+    labels: topNomes,
+    datasets: [{
+      data: topValores,
+      backgroundColor: topValores.map((v,i) => i===0 ? '#ff6b35' : i < 3 ? '#fbbf24' : 'rgba(0,229,195,0.6)'),
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtBRLFull(ctx.raw) } } },
+    scales: {
+      x: { grid: { display: false }, border: { color: 'transparent' }, ticks: { maxRotation: 30, font: { size: 9 } } },
+      y: { grid: { color: 'rgba(31,45,69,0.6)' }, border: { color: 'transparent' }, ticks: { callback: v => fmtBRL(v) } }
+    }
+  }
+});
+
+// ============ TABLES ============
+// Tabela mensal
+const tbMensalBody = document.getElementById('tabelaMensalBody');
+const totalValor = valor2025.reduce((a,b)=>a+b,0);
+mesesFull.forEach((mes,i) => {
+  const perc = (valor2025[i]/totalValor*100).toFixed(1);
+  const barW = (valor2025[i]/Math.max(...valor2025)*100).toFixed(1);
+  const t = valor2025[i]/consumo2025[i];
+  tbMensalBody.innerHTML += `<tr>
+    <td style="font-weight:600;">${mes}</td>
+    <td style="font-family:Arial,sans-serif;">${consumo2025[i].toLocaleString('pt-BR')} kWh</td>
+    <td style="font-family:Arial,sans-serif;color:var(--accent);">${fmtBRLFull(valor2025[i])}</td>
+    <td style="font-family:Arial,sans-serif;">R$ ${t.toFixed(4)}/kWh</td>
+    <td style="font-family:Arial,sans-serif;">${perc}%</td>
+    <td><div class="bar-inline"><div class="bar-bg"><div class="bar-fill" style="width:${barW}%"></div></div><span style="font-size:0.75rem;color:var(--muted)">${barW}%</span></div></td>
+  </tr>`;
+});
+
+// Tabela setores
+const tbSetores = document.getElementById('tabelaSetores');
+setores.forEach((s,i) => {
+  const var_pct = ((setorValor26Jan[i]-setorValor25Jan[i])/setorValor25Jan[i]*100).toFixed(1);
+  const color = var_pct < -20 ? 'var(--danger)' : var_pct < 0 ? 'var(--green)' : 'var(--warn)';
+  const status = var_pct < -20 ? '🔴 Crítico' : var_pct < -10 ? '🟡 Atenção' : var_pct < 0 ? '🟢 Redução' : '🔵 Estável';
+  tbSetores.innerHTML += `<tr>
+    <td style="font-weight:700;">${s}</td>
+    <td style="font-family:Arial,sans-serif;">${(setorValor25[i]/1e6).toFixed(2)}M kWh*</td>
+    <td style="font-family:Arial,sans-serif;color:var(--accent);">${fmtBRLFull(setorValor25[i])}</td>
+    <td style="font-family:Arial,sans-serif;">${fmtBRLFull(setorValor25Jan[i])}</td>
+    <td style="font-family:Arial,sans-serif;">${fmtBRLFull(setorValor26Jan[i])}</td>
+    <td style="font-family:Arial,sans-serif;color:${color};font-weight:700;">${var_pct}%</td>
+    <td>${status}</td>
+  </tr>`;
+});
+
+// Tabela ranking
+const tbRanking = document.getElementById('tabelaRanking');
+const rankData = [
+  ['EM Isabel Salgado','7ª CRE','EM',1732879.72],
+  ['CIEP Presidente João Goulart','2ª CRE','EM',504889.21],
+  ['EM Ginásio Medalhista Olímpico','10ª CRE','EM',262450.64],
+  ['CIEP Dep. Ulysses Guimarães','10ª CRE','EM',261786.90],
+  ['CIEP Hildebrando de Araújo Góes','10ª CRE','EM',259880.88],
+  ['CIEP José Pedro Varela','1ª CRE','EM',257612.63],
+  ['CIEP Posseiro Mário Vaz','10ª CRE','EM',252499.09],
+  ['EM Ruy Barbosa','4ª CRE','EM',239185.55],
+  ['EM Aleksander Henrik Laks','7ª CRE','EM',236188.82],
+  ['EM Nelson Prudêncio','11ª CRE','EM',233390.85],
+  ['EM Castro Alves','9ª CRE','EM',220000.00],
+  ['EM Menezes Cortes','7ª CRE','EM',192037.12],
+  ['EM "25 de Abril"','7ª CRE','EM',188312.59],
+  ['EM Leônidas Sobrino Porto','8ª CRE','EM',185252.07],
+  ['EM Haydéa Vianna Fiuza de Castro','10ª CRE','EM',183225.42],
+];
+const maxRank = rankData[0][3];
+rankData.forEach((r,i) => {
+  const barW = (r[3]/maxRank*100).toFixed(1);
+  const tipoCls = r[2]==='EM'?'tag-em':r[2]==='EDI'?'tag-edi':r[2]==='CM'?'tag-cm':'tag-ua';
+  tbRanking.innerHTML += `<tr>
+    <td style="font-weight:700;color:${i<3?'var(--warn)':'var(--muted)'};">${i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`}</td>
+    <td style="font-weight:600;">${r[0]}</td>
+    <td><span style="font-size:0.75rem;color:var(--muted);">${r[1]}</span></td>
+    <td><span class="tag ${tipoCls}">${r[2]}</span></td>
+    <td style="font-family:Arial,sans-serif;color:var(--accent);">${fmtBRLFull(r[3])}</td>
+    <td><div class="bar-inline"><div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:${i<3?'linear-gradient(90deg,var(--warn),#fde68a)':'linear-gradient(90deg,var(--accent),#7dd3fc)'}"></div></div></div></td>
+  </tr>`;
+});
+
+// Projeção grid
+const projGrid = document.getElementById('projGrid');
+mesesFull.forEach((mes,i) => {
+  const isActual = i === 0;
+  projGrid.innerHTML += `<div class="proj-cell ${isActual?'actual':'proj'}">
+    <div class="proj-month">${meses[i]}</div>
+    <div class="proj-val">${fmtBRL(valor2026proj[i])}</div>
+    <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;font-family:Arial,sans-serif;">${isActual?'REAL':'PROJETADO'}</div>
+  </div>`;
+});
+
+// ============ TABS ============
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
