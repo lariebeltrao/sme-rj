@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Merenda - SMERJ</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #0a1628;
+    --navy2: #112040;
+    --blue: #1a3a6b;
+    --accent: #1e88e5;
+    --accent2: #00bcd4;
+    --gold: #f5a623;
+    --green: #26a65b;
+    --red: #e53935;
+    --orange: #fb8c00;
+    --white: #f0f4ff;
+    --text: #c8d6f5;
+    --muted: #7a8fb5;
+    --card: rgba(255,255,255,0.04);
+    --border: rgba(100,160,255,0.12);
+  }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--navy);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #0a1628 0%, #112040 50%, #0d2052 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 22px 40px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 60px,
+      rgba(30,136,229,0.04) 60px,
+      rgba(30,136,229,0.04) 61px
+    );
+  }
+  .header-inner { position: relative; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .header-left {}
+  .header-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    padding: 3px 10px;
+    border-radius: 2px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+  }
+  h1 span { color: var(--accent2); }
+  .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .header-meta {
+    text-align: right;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .header-meta strong { color: var(--accent2); display: block; font-size: 13px; }
+
+  /* MAIN */
+  .main { padding: 24px 32px 40px; }
+
+  /* KPI ROW */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi-card:hover { border-color: var(--accent); }
+  .kpi-card .bar {
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    border-radius: 8px 0 0 8px;
+  }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .kpi-value { font-size: 22px; font-weight: 700; color: #fff; line-height: 1; }
+  .kpi-value.medium { font-size: 18px; }
+  .kpi-sub { font-size: 11px; margin-top: 4px; }
+  .kpi-sub.up { color: var(--green); }
+  .kpi-sub.down { color: var(--red); }
+  .kpi-sub.warn { color: var(--gold); }
+  .kpi-sub.neutral { color: var(--muted); }
+
+  /* SECTION */
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* GRID LAYOUTS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .grid-12 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 20px; }
+  .grid-21 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media(max-width: 960px) {
+    .grid-2, .grid-3, .grid-12, .grid-21 { grid-template-columns: 1fr; }
+  }
+
+  /* CHART CARD */
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+  }
+  .chart-card h3 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+  }
+  .chart-card canvas { max-height: 260px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    background: rgba(30,136,229,0.15);
+    color: var(--accent2);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-size: 10px;
+    padding: 9px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    color: var(--text);
+  }
+  tr:hover td { background: rgba(30,136,229,0.05); }
+  .num { text-align: right; font-family: 'Courier New', monospace; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .badge-up { background: rgba(38,166,91,0.2); color: #4caf50; }
+  .badge-down { background: rgba(229,57,53,0.2); color: #ef5350; }
+  .badge-warn { background: rgba(245,166,35,0.2); color: #ffa726; }
+  .badge-blue { background: rgba(30,136,229,0.2); color: #64b5f6; }
+
+  /* ALERTS */
+  .alerts { margin-bottom: 20px; }
+  .alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border-left-width: 4px;
+  }
+  .alert.red { border-left-color: var(--red); }
+  .alert.gold { border-left-color: var(--gold); }
+  .alert.green { border-left-color: var(--green); }
+  .alert.blue { border-left-color: var(--accent); }
+  .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .alert-title { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .alert-text { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+  /* PROJECTION NOTE */
+  .proj-note {
+    background: rgba(30,136,229,0.08);
+    border: 1px dashed rgba(30,136,229,0.3);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+  .proj-note strong { color: var(--accent2); }
+
+  /* SISGEN */
+  .sisgen-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+  }
+  .sisgen-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .sisgen-row:last-child { border-bottom: none; }
+  .sisgen-label { color: var(--muted); }
+  .sisgen-val { font-weight: 700; color: #fff; }
+  .sisgen-diff { font-size: 12px; padding: 2px 10px; border-radius: 10px; font-weight: 700; }
+  .sisgen-diff.neg { background: rgba(229,57,53,0.15); color: #ef5350; }
+  .sisgen-diff.pos { background: rgba(38,166,91,0.15); color: #4caf50; }
+
+  /* PROGRESS BAR */
+  .prog-wrap { margin: 6px 0; }
+  .prog-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .prog-bar { height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+
+  /* FOOTER */
+  .footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+  }
+
+  .tag-proj {
+    font-size: 9px;
+    background: rgba(245,166,35,0.15);
+    color: var(--gold);
+    border: 1px solid rgba(245,166,35,0.3);
+    padding: 1px 6px;
+    border-radius: 3px;
+    vertical-align: middle;
+    margin-left: 4px;
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="header-badge">Dashboard Analítico · 2025–2026</div>
+      <h1>Análise de Consumo e Faturamento de <span>Merenda</span> — SMERJ</h1>
+      <div class="subtitle">Coordenadoria Técnica de Operações — E/CTO</div>
+    </div>
+    <div class="header-meta">
+      <strong>Base: Planilha Consolidada</strong>
+      2025 (12 meses) · 2026 (Jan–Mar)<br>
+      24.624 pedidos (2025) + 5.245 (2026)<br>
+      Última atualização: Março/2026
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- KPIs -->
+  <div class="section-title">📊 Indicadores Gerais</div>
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="bar" style="background:var(--accent)"></div>
+      <div class="kpi-label">Total Faturado 2025</div>
+      <div class="kpi-value medium">R$ 434,2 M</div>
+      <div class="kpi-sub neutral">12 meses · 24.624 pedidos</div>
+    </div>
+    <div class="kpi-card">
+      <div class="bar" style="background:var(--accent2)"></div>
+      <div class="kpi-label">Faturado 2026 (Jan–Mar)</div>
+      <div class="kpi-value medium">R$ 74,0 M</div>
+      <div class="kpi-sub down">▼ 12,3% vs Jan–Mar 2025</div>
+    </div>
+    <div class="kpi-card">
+      <div class="bar" style="background:var(--green)"></div>
+      <div class="kpi-label">Projeção 2026 (12 meses)</div>
+      <div class="kpi-value medium">R$ 403,3 M</div>
+      <div class="kpi-sub warn">⚠ Est. com fator –5,85%/ano</div>
+    </div>
+    <div class="kpi-card">
+      <div class="bar" style="background:var(--gold)"></div>
+      <div class="kpi-label">Fornecedores Ativos</div>
+      <div class="kpi-value">18 → 11</div>
+      <div class="kpi-sub down">▼ 39% de redução em 2026</div>
+    </div>
+    <div class="kpi-card">
+      <div class="bar" style="background:var(--orange)"></div>
+      <div class="kpi-label">Qtd. Pedida 2025</div>
+      <div class="kpi-value medium">55,9 Mi</div>
+      <div class="kpi-sub neutral">unidades / itens</div>
+    </div>
+    <div class="kpi-card">
+      <div class="bar" style="background:#9c27b0"></div>
+      <div class="kpi-label">Gêneros Distintos</div>
+      <div class="kpi-value">126 / 124</div>
+      <div class="kpi-sub neutral">2025 / 2026</div>
+    </div>
+  </div>
+
+  <!-- ALERTAS -->
+  <div class="section-title">🚨 Alertas e Panorama</div>
+  <div class="alerts">
+    <div class="alert red">
+      <div class="alert-icon">🔴</div>
+      <div>
+        <div class="alert-title">Queda Significativa: Leite Integral</div>
+        <div class="alert-text">Em 2025 o Leite Integral foi o item #1 com R$ 84,8 M. Em 2026 (Jan–Mar) caiu para #2 (R$ 9,1 M), perdendo posição para o Patinho. Variação de –28% no mesmo período. Verificar ruptura de estoque ou revisão de cardápio.</div>
+      </div>
+    </div>
+    <div class="alert gold">
+      <div class="alert-icon">⚠️</div>
+      <div>
+        <div class="alert-title">Redução de Fornecedores: Risco de Concentração</div>
+        <div class="alert-text">De 18 fornecedores ativos em 2025 para apenas 11 em 2026. A COMERCIAL MILANO responde por ~41% do total 2026, criando risco de dependência. Recomenda-se diversificação da base de fornecedores.</div>
+      </div>
+    </div>
+    <div class="alert gold">
+      <div class="alert-icon">⚠️</div>
+      <div>
+        <div class="alert-title">Faturamento de Emergência (EMG) Elevado</div>
+        <div class="alert-text">Em 2025, R$ 112,6 M (25,9% do total) foram contratados em caráter emergencial. Em 2026, já são R$ 12,1 M emergenciais de R$ 74 M (16,3%), indicando redução, mas ainda acima do ideal. Planejamento de licitações precisa ser antecipado.</div>
+      </div>
+    </div>
+    <div class="alert green">
+      <div class="alert-icon">✅</div>
+      <div>
+        <div class="alert-title">Redução no Preço Médio Unitário</div>
+        <div class="alert-text">Preço médio com desconto caiu de R$ 9,47 (2025) para R$ 9,02 (2026), redução de 4,7%. Desconto médio aumentou de R$ 251 para R$ 259. Indica melhora na negociação com fornecedores em 2026.</div>
+      </div>
+    </div>
+    <div class="alert blue">
+      <div class="alert-icon">ℹ️</div>
+      <div>
+        <div class="alert-title">Sazonalidade: Meses Críticos</div>
+        <div class="alert-text">Junho (R$ 53,6 M), Maio (R$ 48,7 M) e Setembro (R$ 49,7 M) são os meses de maior gasto em 2025. Janeiro apresenta volume mínimo (R$ 1,6 M) — típico de recesso escolar. O planejamento de contratos deve considerar este ciclo.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRÁFICOS PRINCIPAIS -->
+  <div class="section-title">📈 Faturamento Mensal — Comparativo 2025 vs 2026</div>
+  <div class="grid-2">
+    <div class="chart-card" style="grid-column: span 2;">
+      <h3>Faturamento Mensal (R$) — 2025 Realizado vs 2026 Realizado + Projeção</h3>
+      <canvas id="chartMensal" height="80"></canvas>
+      <div class="proj-note">
+        <strong>📌 Metodologia de Projeção:</strong> Os meses de Abril a Dezembro/2026 foram projetados aplicando o fator de crescimento médio calculado a partir da variação Jan–Mar 2026 vs Jan–Mar 2025 (fator = 0,9415 ou –5,85%). A projeção é estimada e pode variar conforme calendário escolar, novos contratos e políticas de compra.
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <h3>Top 10 Gêneros por Valor Total — 2025</h3>
+      <canvas id="chartGen2025" height="120"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Top 10 Gêneros por Valor Total — 2026 (Jan–Mar)</h3>
+      <canvas id="chartGen2026" height="120"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <h3>Faturamento por Fornecedor — 2025 (Top 8)</h3>
+      <canvas id="chartForn2025" height="110"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Faturamento por Fornecedor — 2026 (Top 8)</h3>
+      <canvas id="chartForn2026" height="110"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="chart-card">
+      <h3>Composição NOR vs EMG — 2025</h3>
+      <canvas id="chartNorEmg2025" height="150"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Composição NOR vs EMG — 2026</h3>
+      <canvas id="chartNorEmg2026" height="150"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Qtd. Pedida por Mês — 2025 vs 2026</h3>
+      <canvas id="chartQtd" height="150"></canvas>
+    </div>
+  </div>
+
+  <!-- TABELA COMPARATIVA MENSAL -->
+  <div class="section-title">📋 Tabela Comparativa Mensal — 2025 vs 2026</div>
+  <div class="chart-card" style="margin-bottom:20px;">
+    <h3>Detalhamento por Mês — Valor Total e Variação</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Mês</th>
+            <th class="num">Valor 2025 (R$)</th>
+            <th class="num">Valor 2026 (R$)</th>
+            <th class="num">Variação (%)</th>
+            <th class="num">Qtd 2025</th>
+            <th class="num">Qtd 2026</th>
+            <th>Status 2026</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaMensal">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TABELA TOP GÊNEROS COMPARATIVO -->
+  <div class="section-title">🥗 Panorama de Consumo — Top Gêneros Comparativo</div>
+  <div class="grid-2">
+    <div class="chart-card">
+      <h3>Jan–Mar 2025 vs Jan–Mar 2026 — Top Itens</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Gênero</th>
+              <th class="num">Jan–Mar 2025</th>
+              <th class="num">Jan–Mar 2026</th>
+              <th class="num">Var %</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaGeneros"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Participação % por Grupo — 2025 vs 2026</h3>
+      <canvas id="chartGrupos" height="130"></canvas>
+      <br>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">
+        <strong style="color:var(--accent2)">Grupos:</strong> 
+        1=Hortaliças · 2=Tubérculos · 3=Frutas · 4=Leguminosas · 5=Cereais/Massas · 
+        6=Pães/Farináceos · 7=Laticínios · 8=Carnes/Aves · 9=Peixes/Frutos do Mar · 10=Ovos/Derivados
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJEÇÃO 2026 DETALHADA -->
+  <div class="section-title">🔮 Projeção de Gastos 2026 — Detalhamento</div>
+  <div class="grid-21">
+    <div class="chart-card">
+      <h3>Projeção Acumulada 2026 — Realizado vs Estimado (R$ Mil)</h3>
+      <canvas id="chartProjecao" height="100"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Resumo Projetado 2026</h3>
+      <div id="projecaoResumo"></div>
+      <div class="proj-note" style="margin-top:14px;">
+        <strong>⚠ Atenção:</strong> Projeção estatística baseada em sazonalidade 2025 com ajuste de –5,85%. Confirmar com calendário escolar oficial, novos editais e revisões contratuais.
+      </div>
+    </div>
+  </div>
+
+  <!-- DIFERENÇA SISGEN -->
+  <div class="section-title">⚖️ Faturamento Consolidado vs SISGEN</div>
+  <div class="grid-2">
+    <div class="sisgen-card">
+      <h3 style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Comparativo de Fontes — Planilha Consolidada vs SISGEN</h3>
+      <div class="sisgen-row">
+        <span class="sisgen-label">Fonte</span>
+        <span class="sisgen-label">Planilha Consolidada</span>
+        <span class="sisgen-label">SISGEN (referência)</span>
+        <span class="sisgen-label">Diferença</span>
+      </div>
+      <div class="sisgen-row">
+        <span class="sisgen-label">Total 2025</span>
+        <span class="sisgen-val">R$ 434.234.853,87</span>
+        <span class="sisgen-val" style="color:var(--gold)">Ver SISGEN</span>
+        <span class="sisgen-diff neg" id="diff2025">—</span>
+      </div>
+      <div class="sisgen-row">
+        <span class="sisgen-label">Jan–Mar 2026</span>
+        <span class="sisgen-val">R$ 73.999.809,52</span>
+        <span class="sisgen-val" style="color:var(--gold)">Ver SISGEN</span>
+        <span class="sisgen-diff neg" id="diff2026">—</span>
+      </div>
+      <div class="sisgen-row">
+        <span class="sisgen-label">Tipo NOR 2025</span>
+        <span class="sisgen-val">R$ 321.585.213,71</span>
+        <span class="sisgen-val" style="color:var(--gold)">—</span>
+        <span style="font-size:11px;color:var(--muted)">74,0% do total</span>
+      </div>
+      <div class="sisgen-row">
+        <span class="sisgen-label">Tipo EMG 2025</span>
+        <span class="sisgen-val">R$ 112.649.640,16</span>
+        <span class="sisgen-val" style="color:var(--gold)">—</span>
+        <span style="font-size:11px;color:var(--red)">⚠ 26,0% do total</span>
+      </div>
+      <div class="sisgen-row">
+        <span class="sisgen-label">Tipo NOR 2026</span>
+        <span class="sisgen-val">R$ 61.907.140,13</span>
+        <span class="sisgen-val" style="color:var(--gold)">—</span>
+        <span style="font-size:11px;color:var(--text)">83,7% do total</span>
+      </div>
+      <div class="sisgen-row">
+        <span class="sisgen-label">Tipo EMG 2026</span>
+        <span class="sisgen-val">R$ 12.092.669,39</span>
+        <span class="sisgen-val" style="color:var(--gold)">—</span>
+        <span style="font-size:11px;color:var(--gold)">16,3% — melhora vs 2025</span>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Possíveis Causas de Divergência entre Planilha e SISGEN</h3>
+      <div style="margin-top:8px;">
+        <div class="alert blue" style="margin-bottom:8px;">
+          <div class="alert-icon" style="font-size:14px;">📌</div>
+          <div>
+            <div class="alert-title" style="font-size:12px;">Pedidos Cancelados / Não Entregues</div>
+            <div class="alert-text">A planilha pode incluir pedidos lançados mas não executados, enquanto o SISGEN registra apenas o faturamento efetivo de notas emitidas.</div>
+          </div>
+        </div>
+        <div class="alert gold" style="margin-bottom:8px;">
+          <div class="alert-icon" style="font-size:14px;">📌</div>
+          <div>
+            <div class="alert-title" style="font-size:12px;">Diferença de Competência (Data do Pedido vs NF)</div>
+            <div class="alert-text">Pedidos emitidos em um mês com entrega/faturamento no mês seguinte podem gerar divergência temporal entre os dois sistemas.</div>
+          </div>
+        </div>
+        <div class="alert red" style="margin-bottom:8px;">
+          <div class="alert-icon" style="font-size:14px;">📌</div>
+          <div>
+            <div class="alert-title" style="font-size:12px;">Devoluções e Glosas não Registradas</div>
+            <div class="alert-text">Devoluções parciais ou glosas contratuais aplicadas no SISGEN após o lançamento original na planilha consolidada podem gerar gap de valor.</div>
+          </div>
+        </div>
+        <div class="alert green" style="margin-bottom:0;">
+          <div class="alert-icon" style="font-size:14px;">📌</div>
+          <div>
+            <div class="alert-title" style="font-size:12px;">Recomendação de Conciliação</div>
+            <div class="alert-text">Recomenda-se conciliação mensal entre os sistemas cruzando Número do Pedido, TC, Fornecedor e Período para identificação e tratamento das divergências.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABELA FORNECEDORES -->
+  <div class="section-title">🏢 Ranking de Fornecedores — 2025 vs 2026</div>
+  <div class="chart-card" style="margin-bottom:20px;">
+    <h3>Top Fornecedores por Faturamento — Participação e Comparativo</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Fornecedor</th>
+            <th class="num">2025 (R$)</th>
+            <th class="num">Part. % 2025</th>
+            <th class="num">2026 Jan–Mar (R$)</th>
+            <th class="num">Part. % 2026</th>
+            <th>Tendência</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaForn"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<div class="footer">
+  Dashboard gerado com base na Planilha CONSOLIDADO_2025_E_2026_ATÉ_MARÇO.xlsx &nbsp;·&nbsp;
+  SMERJ — Secretaria Municipal de Educação do Rio de Janeiro &nbsp;·&nbsp;
+  E/CTO — Coordenadoria Técnica de Operações
+</div>
+
+<script>
+// ==================== DADOS ====================
+const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+const val2025 = [1594697.84, 37484709.43, 45344498.41, 34306068.11, 48734039.96, 53607469.06,
+                 20353750.47, 41052889.41, 49744896.08, 47430076.07, 36807024.17, 17774734.86];
+
+const val2026real = [1746722.42, 29354972.26, 42898114.84, null, null, null, null, null, null, null, null, null];
+
+const val2026proj = [null, null, null,
+  32299149.36, 45883079.06, 50471410.60, 19163047.90, 38651278.90,
+  46834799.69, 44655397.58, 34653798.48, 16734905.74];
+
+const qtd2025 = [172954, 4835013, 5401803, 4015720, 6062648, 6663739, 2717190, 5251804, 6857968, 6773815, 4998028, 2439671];
+const qtd2026 = [232786, 4058130, 5840905, null, null, null, null, null, null, null, null, null];
+
+// Gêneros Jan-Mar 2025 vs 2026
+const genCompar = [
+  {name:'PATINHO', v25: 10400873.33, v26: 9748797.88},
+  {name:'LEITE INTEGRAL', v25: 9934446.53, v26: 9107650.29},
+  {name:'FILE FRANGO', v25: 7277122.17, v26: 4489031.78},
+  {name:'BANANA PRATA', v25: 4388429.54, v26: 3988714.77},
+  {name:'ARROZ PARBOILIZ', v25: 4322513.57, v26: 1430000.00},
+  {name:'OVO, GALINHA, B', v25: 4145407.14, v26: 3662562.71},
+  {name:'PAO CARECA 50G', v25: 3087917.82, v26: 3479188.37},
+  {name:'MAMAO FORMOSA', v25: 3046035.30, v26: 2543623.38},
+  {name:'LARANJA PERA', v25: 2978625.89, v26: 2670602.00},
+  {name:'MELANCIA', v25: 2887255.12, v26: 2408396.46},
+];
+
+const forn2025 = [
+  {name:'COMERCIAL MILANO BRASIL LTDA.', v: 161675522.78},
+  {name:'INFINITY MULTISERVICOS', v: 70146868.93},
+  {name:'ERMAR ALIMENTOS LTDA', v: 40571745.09},
+  {name:'AVANTY COMERCIO E SERVICOS', v: 32289169.21},
+  {name:'COOPERATIVA DALIA ALIMENTOS', v: 27749749.95},
+  {name:'FRIDEL-FRIG IND DEL REY', v: 26788351.73},
+  {name:'COOP AGROPEC BARRA MANSA', v: 19680581.98},
+  {name:'SOLAMARIS FRUTAS E LEGUMES', v: 19335362.18},
+];
+const forn2026 = [
+  {name:'COMERCIAL MILANO BRASIL LTDA.', v: 30449612.94},
+  {name:'INFINITY MULTISERVICOS', v: 14066272.46},
+  {name:'ERMAR ALIMENTOS LTDA', v: 7421692.70},
+  {name:'AVANTY COMERCIO E SERVICOS', v: 6882472.28},
+  {name:'FRIDEL-FRIG IND DEL REY', v: 6011094.33},
+  {name:'COOPERATIVA DALIA ALIMENTOS', v: 4088354.40},
+  {name:'SOLAMARIS FRUTAS E LEGUMES', v: 3893038.20},
+  {name:'RPG SOLUCOES DISTRIBUIDORA', v: 910896.50},
+];
+
+const totalForn2025 = 434234853.87;
+const totalForn2026 = 73999809.52;
+
+// Grupos
+const grupos2025 = [[10,86481611.41],[7,53772264.67],[8,49194152.91],[9,48856867.76],[4,42671130.30]];
+const grupos2026 = [[10,11844444.20],[7,9868753.58],[9,8835951.71],[8,8632650.42],[4,7326568.49]];
+
+// ==================== HELPERS ====================
+const fmt = (v) => v == null ? '—' : 'R$ ' + (v/1e6).toFixed(2) + ' M';
+const fmtFull = (v) => v == null ? '—' : 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtQtd = (v) => v == null ? '—' : v.toLocaleString('pt-BR');
+const pct = (a, b) => a && b ? (((b/a)-1)*100).toFixed(1)+'%' : '—';
+
+const colors = {
+  blue: '#1e88e5',
+  cyan: '#00bcd4',
+  green: '#26a65b',
+  gold: '#f5a623',
+  red: '#e53935',
+  purple: '#9c27b0',
+  orange: '#fb8c00',
+  teal: '#009688',
+};
+
+Chart.defaults.color = '#7a8fb5';
+Chart.defaults.font.family = 'Arial';
+Chart.defaults.font.size = 11;
+
+// ==================== CHART: MENSAL ====================
+new Chart(document.getElementById('chartMensal'), {
+  type: 'bar',
+  data: {
+    labels: meses,
+    datasets: [
+      {
+        label: '2025 Realizado',
+        data: val2025,
+        backgroundColor: 'rgba(30,136,229,0.55)',
+        borderColor: '#1e88e5',
+        borderWidth: 1,
+        borderRadius: 3,
+      },
+      {
+        label: '2026 Realizado',
+        data: val2026real,
+        backgroundColor: 'rgba(0,188,212,0.7)',
+        borderColor: '#00bcd4',
+        borderWidth: 1,
+        borderRadius: 3,
+      },
+      {
+        label: '2026 Projetado',
+        data: val2026proj,
+        backgroundColor: 'rgba(245,166,35,0.35)',
+        borderColor: '#f5a623',
+        borderWidth: 1,
+        borderRadius: 3,
+        borderDash: [4,4],
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {labels: {color:'#c8d6f5', boxWidth:12}},
+      tooltip: {
+        callbacks: {
+          label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw != null ? 'R$ '+ctx.raw.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}) : '—'}`
+        }
+      }
+    },
+    scales: {
+      x: {grid:{color:'rgba(255,255,255,0.04)'}},
+      y: {
+        grid:{color:'rgba(255,255,255,0.04)'},
+        ticks:{callback: v => 'R$ '+(v/1e6).toFixed(0)+'M'}
+      }
+    }
+  }
+});
+
+// ==================== CHART: GEN 2025 ====================
+const gen2025Labels = ['LEITE INTEGRAL','PATINHO','FILE FRANGO','BANANA PRATA','PEIXE TILAPIA','OVO GALINHA','ARROZ PARBOILIZ','PAO CARECA 50G','LARANJA PERA','MAMAO FORMOSA'];
+const gen2025Vals = [84829020.42, 38204443.26, 33568634.29, 24851674.11, 24348767.96, 21107119.75, 14820856.39, 14724044.41, 14302663.08, 14191620.41];
+new Chart(document.getElementById('chartGen2025'), {
+  type: 'bar', indexAxis: 'y',
+  data: {
+    labels: gen2025Labels,
+    datasets: [{
+      label: 'Valor Total 2025',
+      data: gen2025Vals,
+      backgroundColor: ['#1e88e5','#1e88e5','#1e88e5','#00bcd4','#00bcd4','#26a65b','#26a65b','#f5a623','#f5a623','#fb8c00'],
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    responsive: true, plugins: {legend:{display:false},
+      tooltip:{callbacks:{label:(c)=>'R$ '+(c.raw/1e6).toFixed(2)+'M'}}},
+    scales: {
+      x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:v=>'R$ '+(v/1e6).toFixed(0)+'M'}},
+      y:{grid:{display:false}}
+    }
+  }
+});
+
+// ==================== CHART: GEN 2026 ====================
+const gen2026Labels = ['PATINHO','LEITE INTEGRAL','PEIXE TILAPIA','FILE FRANGO','BANANA PRATA','OVO GALINHA','PAO CARECA 50G','LARANJA PERA','MAMAO FORMOSA','MELANCIA'];
+const gen2026Vals = [9748797.88, 9107650.29, 4811025.73, 4489031.78, 3988714.77, 3662562.71, 3479188.37, 2670602.00, 2543623.38, 2408396.46];
+new Chart(document.getElementById('chartGen2026'), {
+  type: 'bar', indexAxis: 'y',
+  data: {
+    labels: gen2026Labels,
+    datasets: [{
+      label: 'Valor Total 2026',
+      data: gen2026Vals,
+      backgroundColor: ['#00bcd4','#00bcd4','#00bcd4','#1e88e5','#1e88e5','#26a65b','#26a65b','#f5a623','#f5a623','#fb8c00'],
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    responsive: true, plugins: {legend:{display:false},
+      tooltip:{callbacks:{label:(c)=>'R$ '+(c.raw/1e6).toFixed(2)+'M'}}},
+    scales: {
+      x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:v=>'R$ '+(v/1e6).toFixed(0)+'M'}},
+      y:{grid:{display:false}}
+    }
+  }
+});
+
+// ==================== CHART: FORNECEDORES ====================
+new Chart(document.getElementById('chartForn2025'), {
+  type: 'doughnut',
+  data: {
+    labels: forn2025.map(f=>f.name.substring(0,22)),
+    datasets: [{
+      data: forn2025.map(f=>f.v),
+      backgroundColor: ['#1e88e5','#00bcd4','#26a65b','#f5a623','#e53935','#9c27b0','#fb8c00','#009688'],
+      borderWidth: 1, borderColor: '#0a1628',
+    }]
+  },
+  options: {responsive:true, plugins:{legend:{position:'right',labels:{color:'#c8d6f5',boxWidth:10,font:{size:10}}},
+    tooltip:{callbacks:{label:(c)=>c.label+': R$ '+(c.raw/1e6).toFixed(1)+'M'}}}}
+});
+new Chart(document.getElementById('chartForn2026'), {
+  type: 'doughnut',
+  data: {
+    labels: forn2026.map(f=>f.name.substring(0,22)),
+    datasets: [{
+      data: forn2026.map(f=>f.v),
+      backgroundColor: ['#1e88e5','#00bcd4','#26a65b','#f5a623','#e53935','#9c27b0','#fb8c00','#009688'],
+      borderWidth: 1, borderColor: '#0a1628',
+    }]
+  },
+  options: {responsive:true, plugins:{legend:{position:'right',labels:{color:'#c8d6f5',boxWidth:10,font:{size:10}}},
+    tooltip:{callbacks:{label:(c)=>c.label+': R$ '+(c.raw/1e6).toFixed(1)+'M'}}}}
+});
+
+// ==================== CHART: NOR/EMG ====================
+new Chart(document.getElementById('chartNorEmg2025'), {
+  type: 'pie',
+  data: {
+    labels: ['NOR (Normal)','EMG (Emergência)'],
+    datasets: [{data:[321585213.71, 112649640.16], backgroundColor:['#1e88e5','#e53935'], borderWidth:2, borderColor:'#0a1628'}]
+  },
+  options: {
+    responsive:true,
+    plugins: {
+      legend:{labels:{color:'#c8d6f5',boxWidth:12}},
+      tooltip:{callbacks:{label:(c)=>c.label+': R$ '+(c.raw/1e6).toFixed(1)+'M ('+((c.raw/434234853.87)*100).toFixed(1)+'%)'}}
+    }
+  }
+});
+new Chart(document.getElementById('chartNorEmg2026'), {
+  type: 'pie',
+  data: {
+    labels: ['NOR (Normal)','EMG (Emergência)'],
+    datasets: [{data:[61907140.13, 12092669.39], backgroundColor:['#00bcd4','#f5a623'], borderWidth:2, borderColor:'#0a1628'}]
+  },
+  options: {
+    responsive:true,
+    plugins: {
+      legend:{labels:{color:'#c8d6f5',boxWidth:12}},
+      tooltip:{callbacks:{label:(c)=>c.label+': R$ '+(c.raw/1e6).toFixed(1)+'M ('+((c.raw/73999809.52)*100).toFixed(1)+'%)'}}
+    }
+  }
+});
+
+// ==================== CHART: QTD ====================
+new Chart(document.getElementById('chartQtd'), {
+  type: 'line',
+  data: {
+    labels: meses,
+    datasets: [
+      {label:'2025 Qtd',data:qtd2025,borderColor:'#1e88e5',backgroundColor:'rgba(30,136,229,0.1)',tension:0.3,fill:true,pointRadius:3},
+      {label:'2026 Qtd',data:qtd2026,borderColor:'#00bcd4',backgroundColor:'rgba(0,188,212,0.1)',tension:0.3,fill:true,pointRadius:3},
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{legend:{labels:{color:'#c8d6f5',boxWidth:10}},
+      tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+c.raw?.toLocaleString('pt-BR')??'—'}}},
+    scales:{x:{grid:{color:'rgba(255,255,255,0.04)'}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:v=>(v/1e6).toFixed(1)+'M'}}}
+  }
+});
+
+// ==================== CHART: GRUPOS ====================
+const grupoNomes = {1:'Hortaliças',2:'Tubérculos',3:'Frutas',4:'Leguminosas',5:'Cereais',6:'Pães',7:'Laticínios',8:'Carnes/Aves',9:'Peixes',10:'Ovos/Deriv'};
+new Chart(document.getElementById('chartGrupos'), {
+  type: 'bar',
+  data: {
+    labels: grupos2025.map(g=>grupoNomes[g[0]]||'Grupo '+g[0]),
+    datasets: [
+      {label:'2025',data:grupos2025.map(g=>g[1]),backgroundColor:'rgba(30,136,229,0.6)',borderRadius:3},
+      {label:'2026 Jan-Mar',data:grupos2026.map(g=>g[1]),backgroundColor:'rgba(0,188,212,0.6)',borderRadius:3},
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{legend:{labels:{color:'#c8d6f5',boxWidth:10}},
+      tooltip:{callbacks:{label:(c)=>'R$ '+(c.raw/1e6).toFixed(1)+'M'}}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:v=>'R$ '+(v/1e6).toFixed(0)+'M'}}}
+  }
+});
+
+// ==================== CHART: PROJEÇÃO ACUMULADA ====================
+const projData = [1746722.42, 29354972.26, 42898114.84,
+  32299149.36, 45883079.06, 50471410.60, 19163047.90, 38651278.90,
+  46834799.69, 44655397.58, 34653798.48, 16734905.74];
+const projAcum = [];
+let acc = 0;
+projData.forEach((v,i) => { acc += v; projAcum.push(Math.round(acc)); });
+
+const proj2025Acum = [];
+let a25 = 0;
+val2025.forEach(v => { a25 += v; proj2025Acum.push(Math.round(a25)); });
+
+new Chart(document.getElementById('chartProjecao'), {
+  type: 'line',
+  data: {
+    labels: meses,
+    datasets: [
+      {label:'2025 Acumulado',data:proj2025Acum,borderColor:'#1e88e5',backgroundColor:'rgba(30,136,229,0.08)',tension:0.3,fill:true,pointRadius:3},
+      {label:'2026 Acumulado (Real+Proj)',data:projAcum,borderColor:'#f5a623',backgroundColor:'rgba(245,166,35,0.08)',tension:0.3,fill:true,pointRadius:3,borderDash:[4,2]},
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{legend:{labels:{color:'#c8d6f5',boxWidth:10}},
+      tooltip:{callbacks:{label:(c)=>'R$ '+(c.raw/1e6).toFixed(1)+'M'}}},
+    scales:{
+      x:{grid:{color:'rgba(255,255,255,0.04)'}},
+      y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:v=>'R$ '+(v/1e6).toFixed(0)+'M'}}
+    }
+  }
+});
+
+// ==================== TABELA MENSAL ====================
+const tbody = document.getElementById('tabelaMensal');
+meses.forEach((m, i) => {
+  const v25 = val2025[i];
+  const v26r = val2026real[i];
+  const v26p = val2026proj[i];
+  const v26 = v26r != null ? v26r : v26p;
+  const q25 = qtd2025[i];
+  const q26 = qtd2026[i];
+  const isReal = v26r != null;
+  const vari = v25 && v26 ? ((v26/v25)-1)*100 : null;
+
+  let badgeTxt, badgeCls;
+  if (!v26) { badgeTxt = '—'; badgeCls = ''; }
+  else if (isReal && vari !== null) {
+    if (vari < -15) { badgeTxt = '▼ '+Math.abs(vari).toFixed(1)+'%'; badgeCls = 'badge-down'; }
+    else if (vari < 0) { badgeTxt = '▼ '+Math.abs(vari).toFixed(1)+'%'; badgeCls = 'badge-warn'; }
+    else { badgeTxt = '▲ '+vari.toFixed(1)+'%'; badgeCls = 'badge-up'; }
+  } else {
+    badgeTxt = 'PROJ'; badgeCls = 'badge-warn';
+  }
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><strong>${m}</strong></td>
+    <td class="num">${fmtFull(v25)}</td>
+    <td class="num">${v26 ? fmtFull(v26) + (isReal ? '' : ' <span class="tag-proj">PROJ</span>') : '—'}</td>
+    <td class="num">${vari !== null ? (vari>=0?'+':'')+vari.toFixed(1)+'%' : '—'}</td>
+    <td class="num">${fmtQtd(q25)}</td>
+    <td class="num">${q26 != null ? fmtQtd(q26) : '<span style="color:var(--muted)">proj.</span>'}</td>
+    <td><span class="badge ${badgeCls}">${badgeTxt}</span></td>
+  `;
+  tbody.appendChild(tr);
+});
+
+// Linha totais
+const totRow = document.createElement('tr');
+totRow.innerHTML = `
+  <td><strong style="color:#fff;">TOTAL</strong></td>
+  <td class="num"><strong style="color:#fff;">R$ 434.234.853,87</strong></td>
+  <td class="num"><strong style="color:#f5a623;">R$ 403.349.866,57 <span class="tag-proj">PROJ</span></strong></td>
+  <td class="num"><span class="badge badge-down">▼ 7,1%</span></td>
+  <td class="num"><strong>55.990.353</strong></td>
+  <td class="num">—</td>
+  <td>—</td>
+`;
+tbody.appendChild(totRow);
+
+// ==================== TABELA GÊNEROS ====================
+const tbG = document.getElementById('tabelaGeneros');
+genCompar.forEach((g,i) => {
+  const vari = ((g.v26/g.v25)-1)*100;
+  const cls = vari < -10 ? 'badge-down' : vari < 0 ? 'badge-warn' : 'badge-up';
+  const sign = vari >= 0 ? '+' : '';
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${i+1}</td>
+    <td>${g.name.trim()}</td>
+    <td class="num">${fmtFull(g.v25)}</td>
+    <td class="num">${fmtFull(g.v26)}</td>
+    <td class="num"><span class="badge ${cls}">${sign}${vari.toFixed(1)}%</span></td>
+  `;
+  tbG.appendChild(tr);
+});
+
+// ==================== TABELA FORNECEDORES ====================
+const tbF = document.getElementById('tabelaForn');
+forn2025.forEach((f, i) => {
+  const f26 = forn2026.find(x => x.name === f.name);
+  const v26 = f26 ? f26.v : null;
+  const part25 = ((f.v / totalForn2025)*100).toFixed(1)+'%';
+  const part26 = v26 ? ((v26 / totalForn2026)*100).toFixed(1)+'%' : '—';
+  const tend = v26 ? (((v26/3)/(f.v/12)) > 1.05 ? '↑ Crescendo' : ((v26/3)/(f.v/12)) < 0.95 ? '↓ Reduzindo' : '→ Estável') : '— Sem dados';
+  const tendCls = tend.includes('Cres') ? 'badge-up' : tend.includes('Red') ? 'badge-down' : 'badge-blue';
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${i+1}</td>
+    <td>${f.name.trim()}</td>
+    <td class="num">${fmtFull(f.v)}</td>
+    <td class="num">${part25}</td>
+    <td class="num">${v26 ? fmtFull(v26) : '—'}</td>
+    <td class="num">${part26}</td>
+    <td><span class="badge ${tendCls}">${tend}</span></td>
+  `;
+  tbF.appendChild(tr);
+});
+
+// ==================== PROJEÇÃO RESUMO ====================
+const projResumo = document.getElementById('projecaoResumo');
+const projMeses = [
+  {m:'Jan', real:1746722.42, proj:null},
+  {m:'Fev', real:29354972.26, proj:null},
+  {m:'Mar', real:42898114.84, proj:null},
+  {m:'Abr', real:null, proj:32299149.36},
+  {m:'Mai', real:null, proj:45883079.06},
+  {m:'Jun', real:null, proj:50471410.60},
+  {m:'Jul', real:null, proj:19163047.90},
+  {m:'Ago', real:null, proj:38651278.90},
+  {m:'Set', real:null, proj:46834799.69},
+  {m:'Out', real:null, proj:44655397.58},
+  {m:'Nov', real:null, proj:34653798.48},
+  {m:'Dez', real:null, proj:16734905.74},
+];
+
+let html = '';
+let acumReal = 0;
+let total = 0;
+projMeses.forEach(p => {
+  const v = p.real ?? p.proj;
+  total += v;
+  const pct = ((v/403349866.57)*100).toFixed(1);
+  const isReal = p.real !== null;
+  html += `<div class="prog-wrap">
+    <div class="prog-label"><span>${p.m} ${isReal ? '<span style="color:var(--accent2);font-size:10px;">● Real</span>' : '<span style="color:var(--gold);font-size:10px;">◌ Proj</span>'}</span><span style="color:${isReal?'var(--accent2)':'var(--gold)'}">R$ ${(v/1e6).toFixed(2)} M</span></div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${isReal?'var(--accent)':'var(--gold)'}"></div></div>
+  </div>`;
+});
+html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;">
+  <span style="color:var(--muted)">Total Projetado 2026</span>
+  <strong style="color:var(--gold)">R$ 403,3 M</strong>
+</div>`;
+projResumo.innerHTML = html;
+
+</script>
+</body>
+</html>
