@@ -54,7 +54,6 @@
     );
   }
   .header-inner { position: relative; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-  .header-left {}
   .header-badge {
     display: inline-block;
     background: var(--accent);
@@ -91,6 +90,41 @@
 
   /* MAIN */
   .main { padding: 24px 32px 40px; }
+
+  /* BACK BUTTON */
+  .btn-back {
+    display: inline-block;
+    padding: 8px 14px;
+    background: rgba(30,136,229,0.15);
+    border: 1px solid rgba(30,136,229,0.3);
+    border-radius: 6px;
+    color: #00bcd4;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 12px 32px;
+    transition: background 0.2s;
+  }
+  .btn-back:hover { background: rgba(30,136,229,0.3); }
+
+  /* FILTER BAR */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .filter-bar select {
+    background: var(--navy2);
+    color: #fff;
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .filter-bar select:focus { outline: 1px solid var(--accent); }
 
   /* KPI ROW */
   .kpi-row {
@@ -294,19 +328,40 @@
   <div class="header-inner">
     <div class="header-left">
       <div class="header-badge">Dashboard Analítico · 2025–2026</div>
-      <h1>Análise de Consumo e Faturamento de <span>Merenda</span> — SMERJ</h1>
+      <h1>Análise de Consumo e Faturamento de Merenda • <span>SME-RJ</span></h1>
       <div class="subtitle">Coordenadoria Técnica de Operações — E/CTO</div>
     </div>
     <div class="header-meta">
       <strong>Base: Planilha Consolidada</strong>
       2025 (12 meses) · 2026 (Jan–Mar)<br>
       24.624 pedidos (2025) + 5.245 (2026)<br>
-      Última atualização: Março/2026
+      Última atualização: Abril/2026
     </div>
   </div>
 </div>
 
+<a href="index.html" class="btn-back">← Voltar ao Painel</a>
+
 <div class="main">
+
+  <!-- FILTRO CRE -->
+  <div class="filter-bar">
+    <label>Filtrar CRE:</label>
+    <select id="filtroCRE" onchange="filtrarCRE()">
+      <option value="all">Todas as CREs</option>
+      <option value="1">1ª CRE</option>
+      <option value="2">2ª CRE</option>
+      <option value="3">3ª CRE</option>
+      <option value="4">4ª CRE</option>
+      <option value="5">5ª CRE</option>
+      <option value="6">6ª CRE</option>
+      <option value="7">7ª CRE</option>
+      <option value="8">8ª CRE</option>
+      <option value="9">9ª CRE</option>
+      <option value="10">10ª CRE</option>
+      <option value="11">11ª CRE</option>
+    </select>
+  </div>
 
   <!-- KPIs -->
   <div class="section-title">📊 Indicadores Gerais</div>
@@ -314,20 +369,20 @@
     <div class="kpi-card">
       <div class="bar" style="background:var(--accent)"></div>
       <div class="kpi-label">Total Faturado 2025</div>
-      <div class="kpi-value medium">R$ 434,2 M</div>
-      <div class="kpi-sub neutral">12 meses · 24.624 pedidos</div>
+      <div class="kpi-value medium" id="kpiTotal2025">R$ 389,2 M</div>
+      <div class="kpi-sub neutral">202 dias letivos</div>
     </div>
     <div class="kpi-card">
       <div class="bar" style="background:var(--accent2)"></div>
-      <div class="kpi-label">Faturado 2026 (Jan–Mar)</div>
-      <div class="kpi-value medium">R$ 74,0 M</div>
-      <div class="kpi-sub down">▼ 12,3% vs Jan–Mar 2025</div>
+      <div class="kpi-label">Média Diária 2025</div>
+      <div class="kpi-value medium" id="kpiMedia2025">R$ 1,93 M</div>
+      <div class="kpi-sub neutral">Execução diária média</div>
     </div>
     <div class="kpi-card">
       <div class="bar" style="background:var(--green)"></div>
-      <div class="kpi-label">Projeção 2026 (12 meses)</div>
-      <div class="kpi-value medium">R$ 403,3 M</div>
-      <div class="kpi-sub warn">⚠ Est. com fator –5,85%/ano</div>
+      <div class="kpi-label">Projeção 2026</div>
+      <div class="kpi-value medium" id="kpiProj2026">R$ 363,2 M</div>
+      <div class="kpi-sub warn">Base Jan–Mar + sazonalidade</div>
     </div>
     <div class="kpi-card">
       <div class="bar" style="background:var(--gold)"></div>
@@ -455,8 +510,7 @@
             <th>Status 2026</th>
           </tr>
         </thead>
-        <tbody id="tabelaMensal">
-        </tbody>
+        <tbody id="tabelaMensal"></tbody>
       </table>
     </div>
   </div>
@@ -486,8 +540,8 @@
       <canvas id="chartGrupos" height="130"></canvas>
       <br>
       <div style="font-size:11px;color:var(--muted);margin-top:8px;">
-        <strong style="color:var(--accent2)">Grupos:</strong> 
-        1=Hortaliças · 2=Tubérculos · 3=Frutas · 4=Leguminosas · 5=Cereais/Massas · 
+        <strong style="color:var(--accent2)">Grupos:</strong>
+        1=Hortaliças · 2=Tubérculos · 3=Frutas · 4=Leguminosas · 5=Cereais/Massas ·
         6=Pães/Farináceos · 7=Laticínios · 8=Carnes/Aves · 9=Peixes/Frutos do Mar · 10=Ovos/Derivados
       </div>
     </div>
@@ -626,10 +680,16 @@
 // ==================== DADOS ====================
 const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-const val2025 = [1594697.84, 37484709.43, 45344498.41, 34306068.11, 48734039.96, 53607469.06,
-                 20353750.47, 41052889.41, 49744896.08, 47430076.07, 36807024.17, 17774734.86];
+const val2025 = [
+  3367578.96, 32374094.22, 43122907.70, 30405202.71,
+  46005204.91, 48400977.35, 16974148.29, 40104411.97,
+  39670243.68, 45115141.59, 34606032.63, 9020971.95
+];
 
-const val2026real = [1746722.42, 29354972.26, 42898114.84, null, null, null, null, null, null, null, null, null];
+const val2026real = [
+  3152193.68, 26688835.05, 39579885.62,
+  null,null,null,null,null,null,null,null,null
+];
 
 const val2026proj = [null, null, null,
   32299149.36, 45883079.06, 50471410.60, 19163047.90, 38651278.90,
@@ -676,30 +736,73 @@ const forn2026 = [
 const totalForn2025 = 434234853.87;
 const totalForn2026 = 73999809.52;
 
+// Dados CRE
+const dadosCRE2025 = {
+  "1": 54118154.31,
+  "2": 26585237.72,
+  "3": 28153649.26,
+  "4": 40926321.07,
+  "5": 30948529.81,
+  "6": 20748371.61,
+  "7": 41368379.68,
+  "8": 39479377.11,
+  "9": 43164644.38,
+  "10": 55369820.93,
+  "11": 8304430.08
+};
+
+const dadosCRE2026 = {
+  "1": 5516134.46,
+  "2": 5260849.23,
+  "3": 6049861.36,
+  "4": 8055605.47,
+  "5": 3652071.67,
+  "6": 4016743.10,
+  "7": 8255155.58,
+  "8": 8298853.34,
+  "9": 8042291.04,
+  "10": 10657401.22,
+  "11": 1615947.88
+};
+
 // Grupos
 const grupos2025 = [[10,86481611.41],[7,53772264.67],[8,49194152.91],[9,48856867.76],[4,42671130.30]];
 const grupos2026 = [[10,11844444.20],[7,9868753.58],[9,8835951.71],[8,8632650.42],[4,7326568.49]];
 
 // ==================== HELPERS ====================
-const fmt = (v) => v == null ? '—' : 'R$ ' + (v/1e6).toFixed(2) + ' M';
 const fmtFull = (v) => v == null ? '—' : 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 const fmtQtd = (v) => v == null ? '—' : v.toLocaleString('pt-BR');
-const pct = (a, b) => a && b ? (((b/a)-1)*100).toFixed(1)+'%' : '—';
-
-const colors = {
-  blue: '#1e88e5',
-  cyan: '#00bcd4',
-  green: '#26a65b',
-  gold: '#f5a623',
-  red: '#e53935',
-  purple: '#9c27b0',
-  orange: '#fb8c00',
-  teal: '#009688',
-};
 
 Chart.defaults.color = '#7a8fb5';
 Chart.defaults.font.family = 'Arial';
 Chart.defaults.font.size = 11;
+
+// ==================== FILTRO CRE ====================
+function filtrarCRE() {
+  const cre = document.getElementById('filtroCRE').value;
+
+  let total2025 = 0;
+  let total2026 = 0;
+
+  if (cre === "all") {
+    total2025 = 389166915.96;
+    total2026 = 363200000;
+  } else {
+    total2025 = dadosCRE2025[cre] || 0;
+    total2026 = dadosCRE2026[cre] || 0;
+  }
+
+  const media = total2025 / 202;
+
+  document.getElementById("kpiTotal2025").innerText =
+    "R$ " + (total2025 / 1e6).toFixed(1) + " M";
+
+  document.getElementById("kpiMedia2025").innerText =
+    "R$ " + (media / 1e6).toFixed(2) + " M";
+
+  document.getElementById("kpiProj2026").innerText =
+    "R$ " + (total2026 / 1e6).toFixed(1) + " M";
+}
 
 // ==================== CHART: MENSAL ====================
 new Chart(document.getElementById('chartMensal'), {
@@ -730,7 +833,6 @@ new Chart(document.getElementById('chartMensal'), {
         borderColor: '#f5a623',
         borderWidth: 1,
         borderRadius: 3,
-        borderDash: [4,4],
       },
     ]
   },
@@ -873,7 +975,7 @@ new Chart(document.getElementById('chartQtd'), {
   options: {
     responsive:true,
     plugins:{legend:{labels:{color:'#c8d6f5',boxWidth:10}},
-      tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+c.raw?.toLocaleString('pt-BR')??'—'}}},
+      tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+(c.raw != null ? c.raw.toLocaleString('pt-BR') : '—')}}},
     scales:{x:{grid:{color:'rgba(255,255,255,0.04)'}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{callback:v=>(v/1e6).toFixed(1)+'M'}}}
   }
 });
@@ -903,7 +1005,7 @@ const projData = [1746722.42, 29354972.26, 42898114.84,
   46834799.69, 44655397.58, 34653798.48, 16734905.74];
 const projAcum = [];
 let acc = 0;
-projData.forEach((v,i) => { acc += v; projAcum.push(Math.round(acc)); });
+projData.forEach((v) => { acc += v; projAcum.push(Math.round(acc)); });
 
 const proj2025Acum = [];
 let a25 = 0;
@@ -1034,11 +1136,8 @@ const projMeses = [
 ];
 
 let html = '';
-let acumReal = 0;
-let total = 0;
 projMeses.forEach(p => {
   const v = p.real ?? p.proj;
-  total += v;
   const pct = ((v/403349866.57)*100).toFixed(1);
   const isReal = p.real !== null;
   html += `<div class="prog-wrap">
